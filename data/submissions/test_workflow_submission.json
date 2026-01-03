@@ -1,0 +1,375 @@
+
+ { 
+  "submitter_name": "test_workflow_submission",
+  "method_description": "Testing automated workflow submission",
+  "repository_url": "https://github.com/your/repo",
+  "reactions": [
+  {
+    "Reaction": "O=C(O)/C=C/c1ccccc1.Cc1ccc(O)cc1>>Cc1ccc2c(c1)C(c1ccccc1)CC(=O)O2",
+    "Reference": "op050024w",
+    "Location": {
+      "Type": "Scheme",
+      "Num": "1"
+    },
+    "Full text of reaction": null,
+    "Amounts": null,
+    "Steps": [
+      {
+        "Step": 1,
+        "Yield": {
+          "Isolated": 89.0,
+          "Flow": null,
+          "Conversion wrt SM": null,
+          "Assay Yield": null,
+          "Selectivity": null,
+          "er": null,
+          "er R:S": null,
+          "er S:R": null,
+          "ee": null,
+          "ee (R)": null,
+          "ee (S)": null,
+          "Purity": null,
+          "dr": null,
+          "E:Z": null,
+          "Z:E": null,
+          "Purity type": null,
+          "Mass": null,
+          "other": null,
+          "Quantitative": null,
+          "No reaction": null
+        },
+        "Reagents": [
+          {
+            "Reagent": "H2SO4",
+            "Amounts": {
+              "Moisture": null,
+              "Concentration": null,
+              "Moles": null,
+              "Mass": null,
+              "Volume": null,
+              "Equivalents": null,
+              "Pressure": null,
+              "Flow Rate": null,
+              "Catalytic Amount": null
+            }
+          }
+        ],
+        "Solvents": [
+          {
+            "Solvent": null,
+            "Amounts": {
+              "Mass": null,
+              "Volume": null,
+              "ratio": null
+            }
+          }
+        ],
+        "Time": null,
+        "Temperature": "120 - 125 C"
+      }
+    ]
+  },
+  {
+    "Reaction": "Cc1ccc2c(c1)C(c1ccccc1)CC(=O)O2>>COC(=O)CC(c1ccccc1)c1cc(C)ccc1OC",
+    "Reference": "op050024w",
+    "Location": {
+      "Type": "Scheme",
+      "Num": "1"
+    },
+    "Full text of reaction": null,
+    "Amounts": null,
+    "Steps": [
+      {
+        "Step": 1,
+        "Yield": {
+          "Isolated": 92.0,
+          "Flow": null,
+          "Conversion wrt SM": null,
+          "Assay Yield": null,
+          "Selectivity": null,
+          "er": null,
+          "er R:S": null,
+          "er S:R": null,
+          "ee": null,
+          "ee (R)": null,
+          "ee (S)": null,
+          "Purity": null,
+          "dr": null,
+          "E:Z": null,
+          "Z:E": null,
+          "Purity type": null,
+          "Mass": null,
+          "other": null,
+          "Quantitative": null,
+          "No reaction": null
+        },
+        "Reagents": [
+          {
+            "Reagent": "MeI",
+            "Amounts": {
+              "Moisture": null,
+              "Concentration": null,
+              "Moles": null,
+              "Mass": null,
+              "Volume": null,
+              "Equivalents": null,
+              "Pressure": null,
+              "Flow Rate": null,
+              "Catalytic Amount": null
+            }
+          },
+          {
+            "Reagent": "K2CO3",
+            "Amounts": {
+              "Moisture": null,
+              "Concentration": null,
+              "Moles": null,
+              "Mass": null,
+              "Volume": null,
+              "Equivalents": null,
+              "Pressure": null,
+              "Flow Rate": null,
+              "Catalytic Amount": null
+            }
+          },
+          {
+            "Reagent": "methanol",
+            "Amounts": {
+              "Moisture": null,
+              "Concentration": null,
+              "Moles": null,
+              "Mass": null,
+              "Volume": null,
+              "Equivalents": null,
+              "Pressure": null,
+              "Flow Rate": null,
+              "Catalytic Amount": null
+            }
+          }
+        ],
+        "Solvents": [
+          {
+            "Solvent": "acetone",
+            "Amounts": {
+              "Mass": null,
+              "Volume": null,
+              "ratio": null
+            }
+          }
+        ],
+        "Time": null,
+        "Temperature": "reflux"
+      }
+    ]
+  },
+  {
+    "Reaction": "COC(=O)CC(c1ccccc1)c1cc(C)ccc1OC>>COc1ccc(C)cc1C(CCO)c1ccccc1",
+    "Reference": "op050024w",
+    "Location": {
+      "Type": "Scheme",
+      "Num": "1"
+    },
+    "Full text of reaction": null,
+    "Amounts": null,
+    "Steps": [
+      {
+        "Step": 1,
+        "Yield": {
+          "Isolated": 93.0,
+          "Flow": null,
+          "Conversion wrt SM": null,
+          "Assay Yield": null,
+          "Selectivity": null,
+          "er": null,
+          "er R:S": null,
+          "er S:R": null,
+          "ee": null,
+          "ee (R)": null,
+          "ee (S)": null,
+          "Purity": null,
+          "dr": null,
+          "E:Z": null,
+          "Z:E": null,
+          "Purity type": null,
+          "Mass": null,
+          "other": null,
+          "Quantitative": null,
+          "No reaction": null
+        },
+        "Reagents": [
+          {
+            "Reagent": "LAH",
+            "Amounts": {
+              "Moisture": null,
+              "Concentration": null,
+              "Moles": null,
+              "Mass": null,
+              "Volume": null,
+              "Equivalents": null,
+              "Pressure": null,
+              "Flow Rate": null,
+              "Catalytic Amount": null
+            }
+          }
+        ],
+        "Solvents": [
+          {
+            "Solvent": "dry ether",
+            "Amounts": {
+              "Mass": null,
+              "Volume": null,
+              "ratio": null
+            }
+          }
+        ],
+        "Time": null,
+        "Temperature": "25 - 35 C"
+      }
+    ]
+  },
+  {
+    "Reaction": "COc1ccc(C)cc1C(CCO)c1ccccc1>>COc1ccc(C)cc1C(CCOS(=O)(=O)c1ccc(C)cc1)c1ccccc1",
+    "Reference": "op050024w",
+    "Location": {
+      "Type": "Scheme",
+      "Num": "1"
+    },
+    "Full text of reaction": null,
+    "Amounts": null,
+    "Steps": [
+      {
+        "Step": 1,
+        "Yield": {
+          "Isolated": 99.0,
+          "Flow": null,
+          "Conversion wrt SM": null,
+          "Assay Yield": null,
+          "Selectivity": null,
+          "er": null,
+          "er R:S": null,
+          "er S:R": null,
+          "ee": null,
+          "ee (R)": null,
+          "ee (S)": null,
+          "Purity": null,
+          "dr": null,
+          "E:Z": null,
+          "Z:E": null,
+          "Purity type": null,
+          "Mass": null,
+          "other": null,
+          "Quantitative": null,
+          "No reaction": null
+        },
+        "Reagents": [
+          {
+            "Reagent": "p-Toluene sulfonyl chloride",
+            "Amounts": {
+              "Moisture": null,
+              "Concentration": null,
+              "Moles": null,
+              "Mass": null,
+              "Volume": null,
+              "Equivalents": null,
+              "Pressure": null,
+              "Flow Rate": null,
+              "Catalytic Amount": null
+            }
+          },
+          {
+            "Reagent": "pyridine",
+            "Amounts": {
+              "Moisture": null,
+              "Concentration": null,
+              "Moles": null,
+              "Mass": null,
+              "Volume": null,
+              "Equivalents": null,
+              "Pressure": null,
+              "Flow Rate": null,
+              "Catalytic Amount": null
+            }
+          }
+        ],
+        "Solvents": [
+          {
+            "Solvent": "chloroform",
+            "Amounts": {
+              "Mass": null,
+              "Volume": null,
+              "ratio": null
+            }
+          }
+        ],
+        "Time": null,
+        "Temperature": "-10 to -15 C"
+      }
+    ]
+  },
+  {
+    "Reaction": "COc1ccc(C)cc1C(CCOS(=O)(=O)c1ccc(C)cc1)c1ccccc1>>COc1ccc(C)cc1C(CCN(C(C)C)C(C)C)c1ccccc1",
+    "Reference": "op050024w",
+    "Location": {
+      "Type": "Scheme",
+      "Num": "1"
+    },
+    "Full text of reaction": null,
+    "Amounts": null,
+    "Steps": [
+      {
+        "Step": 1,
+        "Yield": {
+          "Isolated": 69.0,
+          "Flow": null,
+          "Conversion wrt SM": null,
+          "Assay Yield": null,
+          "Selectivity": null,
+          "er": null,
+          "er R:S": null,
+          "er S:R": null,
+          "ee": null,
+          "ee (R)": null,
+          "ee (S)": null,
+          "Purity": null,
+          "dr": null,
+          "E:Z": null,
+          "Z:E": null,
+          "Purity type": null,
+          "Mass": null,
+          "other": null,
+          "Quantitative": null,
+          "No reaction": null
+        },
+        "Reagents": [
+          {
+            "Reagent": "Diisopropylamine",
+            "Amounts": {
+              "Moisture": null,
+              "Concentration": null,
+              "Moles": null,
+              "Mass": null,
+              "Volume": null,
+              "Equivalents": null,
+              "Pressure": null,
+              "Flow Rate": null,
+              "Catalytic Amount": null
+            }
+          }
+        ],
+        "Solvents": [
+          {
+            "Solvent": "acetonitrile",
+            "Amounts": {
+              "Mass": null,
+              "Volume": null,
+              "ratio": null
+            }
+          }
+        ],
+        "Time": "6 day",
+        "Temperature": "80 - 85 C"
+      }
+    ]
+  }
+]
+}
