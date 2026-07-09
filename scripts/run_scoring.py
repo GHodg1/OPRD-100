@@ -15,11 +15,12 @@ from plotting import Plot
 from security import validate_submission
 
 
-def run_scoring(submission_file, output_dir):
+def run_scoring(submission_file, output_dir, similarity_method="inchikey"):
     """Run scoring analysis on submission data."""
     
     print(f"Loading submission from: {submission_file}")
     print(f"Output directory: {output_dir}")
+    print(f"Similarity method: {similarity_method}")
     
     # SECURITY: Validate submission file before processing
     print("Validating submission for security threats...")
@@ -58,7 +59,7 @@ def run_scoring(submission_file, output_dir):
     # Make submission path absolute before changing directory
     submission_data_path_abs = os.path.abspath(os.path.join(original_dir, submission_data_path))
     
-    dc = DataComparer(submission_data_path_abs)
+    dc = DataComparer(submission_data_path_abs, similarity_method=similarity_method)
     
     # Run all the same analyses as in example_scoring.ipynb
     print("Computing comparison scores...")
@@ -251,9 +252,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run scoring analysis on submission data')
     parser.add_argument('--submission-file', required=True, help='Path to submission JSON file')
     parser.add_argument('--output-dir', required=True, help='Directory to save results')
+    parser.add_argument(
+        '--similarity-method', default='inchikey', choices=['inchikey', 'tanimoto'],
+        help="Reaction-SMILES similarity: 'inchikey' (default, exact InChIKey-set Jaccard) "
+             "or 'tanimoto' (graded Morgan-Tanimoto — partial credit for near-identical molecules)",
+    )
     args = parser.parse_args()
     
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
     
-    run_scoring(args.submission_file, args.output_dir)
+    run_scoring(args.submission_file, args.output_dir, similarity_method=args.similarity_method)

@@ -7,11 +7,20 @@ import json
 import os
 from rdkit import Chem
 from rdkit.Chem import rdChemReactions
+from rdkit.Chem import rdFingerprintGenerator
+from rdkit.DataStructs import TanimotoSimilarity
 import re
 import pandas as pd
 import numpy as np
 from collections import defaultdict
 from scipy.optimize import linear_sum_assignment
+
+# Morgan fingerprint generator (radius 2, 2048 bits), reused across calls. Used by the
+# optional graded-Tanimoto reaction-SMILES similarity method.
+_MORGAN_GENERATOR = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+
+# Valid values for the reaction-SMILES similarity method.
+SIMILARITY_METHODS = ("inchikey", "tanimoto")
 
 def json_to_dict(file_path):
     """
@@ -49,10 +58,22 @@ def remove_entry_from_location(location):
 
 class DataComparer():
 
-    def __init__(self, data_path: str):
+    def __init__(self, data_path: str, similarity_method: str = "inchikey"):
         """
         Initializes the DataComparer with the ground_truth and validation datasets.
+
+        Args:
+            data_path: Path to the validation/submission JSON.
+            similarity_method: How reaction SMILES are compared. ``"inchikey"`` (default)
+                uses binary InChIKey-set Jaccard of reactants and products; ``"tanimoto"``
+                uses graded Morgan-Tanimoto so near-identical molecules (e.g. ethyl vs
+                butyl esters, stereo, salt forms) receive partial credit instead of 0.
         """
+        if similarity_method not in SIMILARITY_METHODS:
+            raise ValueError(
+                f"similarity_method must be one of {SIMILARITY_METHODS}, got {similarity_method!r}"
+            )
+        self.similarity_method = similarity_method
         self.oprd_data = json_to_dict("../data/OPRD-100.json")
         self.val_data = json_to_dict(data_path)
 
@@ -302,7 +323,7 @@ class DataComparer():
             val_indices.append(r_idx)
             oprd_indices.append(o_idx)
             similarity_scores.append(sim_score)
-            comparison = CompareReactionEntries(oprd_entry, val_entry)
+            comparison = CompareReactionEntries(oprd_entry, val_entry, similarity_method=self.similarity_method)
             for metric in metrics:
                 results[metric].append(getattr(comparison, metric, 0))
 
@@ -355,7 +376,7 @@ class DataComparer():
             for val_entry in val_subset:
                 results = []
                 for oprd_entry in oprd_subset:
-                    comparison = CompareReactionEntries(oprd_entry, val_entry)
+                    comparison = CompareReactionEntries(oprd_entry, val_entry, similarity_method=self.similarity_method)
                     results.append(getattr(comparison, metric, 0))
                 comparison_results.append(results)
             return np.array(comparison_results)
@@ -364,7 +385,7 @@ class DataComparer():
             for val_entry in val_subset:
                 max_score = 0
                 for oprd_entry in oprd_subset:
-                    comparison = CompareReactionEntries(oprd_entry, val_entry)
+                    comparison = CompareReactionEntries(oprd_entry, val_entry, similarity_method=self.similarity_method)
                     score = getattr(comparison, metric, 0)
                     if score > max_score:
                         max_score = score
@@ -462,12 +483,19 @@ class DataComparer():
 class CompareReactionEntries():
 
 
-    def __init__(self, rxn1: dict, rxn2: dict):
+    def __init__(self, rxn1: dict, rxn2: dict, similarity_method: str = "inchikey"):
         """
         Initializes the DataComparer with paths to the OPRD and val data files.
+
+        Args:
+            rxn1: First reaction entry (ground truth).
+            rxn2: Second reaction entry (validation/submission).
+            similarity_method: ``"inchikey"`` (default) for binary InChIKey-set Jaccard,
+                or ``"tanimoto"`` for graded Morgan-Tanimoto reaction-SMILES similarity.
         """
         self.rxn1 = rxn1
         self.rxn2 = rxn2
+        self.similarity_method = similarity_method
         self.reaction_smiles_similarity = self.compare_reaction_smiles(rxn1, rxn2)
         self.reaction_steps_similarity = self.compare_reaction_steps(rxn1, rxn2)
         self.yield_similarity = self.compare_yields(rxn1, rxn2)
@@ -553,9 +581,14 @@ class CompareReactionEntries():
     def compare_reaction_smiles(self, rxn1: dict, rxn2: dict):
         """
         Compares two reaction entries and returns a number between 0 and 1 with 1 being a perfect match.
+
+        Uses the method selected at construction time: ``"inchikey"`` (binary InChIKey-set
+        Jaccard) or ``"tanimoto"`` (graded Morgan-Tanimoto).
         """
         if not isinstance(rxn1, dict) or not isinstance(rxn2, dict):
             raise ValueError("Both reactions should be dictionaries.")
+        if getattr(self, "similarity_method", "inchikey") == "tanimoto":
+            return self.compare_reaction_smiles_tanimoto(rxn1, rxn2)
         # Compare the InChI keys of the reactants and products
         r1_rids, r1_pids = self.create_reaction_identifiers([rxn1])
         r2_rids, r2_pids = self.create_reaction_identifiers([rxn2])
@@ -563,7 +596,54 @@ class CompareReactionEntries():
         product_similarity = self.set_similarity_score(set(r1_pids), set(r2_pids))
         reaction_smiles_similarity = (reactant_similarity + product_similarity) / 2
         return reaction_smiles_similarity
-    
+
+    def _component_fingerprints(self, side_smiles: str) -> list:
+        """Morgan fingerprints for each dot-separated molecule on one side of a reaction."""
+        fps = []
+        for part in (side_smiles or "").split("."):
+            part = part.strip()
+            if not part:
+                continue
+            mol = Chem.MolFromSmiles(part)
+            if mol is not None:
+                fps.append(_MORGAN_GENERATOR.GetFingerprint(mol))
+        return fps
+
+    def soft_set_similarity(self, fps_a: list, fps_b: list) -> float:
+        """Symmetric graded set similarity: mean of best-match Tanimoto in both directions.
+
+        Reduces to 1.0 for identical molecule sets and to a proportion for partial
+        overlap. Empty-vs-empty is 1.0; empty-vs-non-empty is 0.0.
+        """
+        if not fps_a and not fps_b:
+            return 1.0
+        if not fps_a or not fps_b:
+            return 0.0
+        a_best = [max(TanimotoSimilarity(a, b) for b in fps_b) for a in fps_a]
+        b_best = [max(TanimotoSimilarity(a, b) for a in fps_a) for b in fps_b]
+        return (sum(a_best) + sum(b_best)) / (len(a_best) + len(b_best))
+
+    def compare_reaction_smiles_tanimoto(self, rxn1: dict, rxn2: dict) -> float:
+        """Graded reaction-SMILES similarity via Morgan-Tanimoto.
+
+        Mirrors :meth:`compare_reaction_smiles` (averaging reactant and product identity)
+        but uses graded Morgan-Tanimoto on each side rather than binary InChIKey-set
+        Jaccard, so near-identical molecules receive partial credit instead of 0.
+        """
+        smi1 = rxn1.get("Reaction", "") or ""
+        smi2 = rxn2.get("Reaction", "") or ""
+        if ">>" not in smi1 or ">>" not in smi2:
+            return 0.0
+        r1, p1 = smi1.split(">>", 1)
+        r2, p2 = smi2.split(">>", 1)
+        reactant_similarity = self.soft_set_similarity(
+            self._component_fingerprints(r1), self._component_fingerprints(r2)
+        )
+        product_similarity = self.soft_set_similarity(
+            self._component_fingerprints(p1), self._component_fingerprints(p2)
+        )
+        return (reactant_similarity + product_similarity) / 2
+
     def compare_reaction_steps(self, rxn1: dict, rxn2: dict):
         """
         Compare number of steps in two reactions.
