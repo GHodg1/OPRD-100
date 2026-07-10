@@ -293,6 +293,7 @@ def score_lenient(
     strip_stereo: bool = False,
     normalize_yields: bool = True,
     type_aware_matching: bool = True,
+    exclude_types: list[str] | None = None,
 ) -> LenientScore:
     """Score a submission against the OPRD-100 gold using content-based matching.
 
@@ -311,6 +312,10 @@ def score_lenient(
         type_aware_matching: If ``True`` (default), match only within the same
             primary Location type (Scheme↔Scheme, Table↔Table, …). If ``False``,
             match globally per paper regardless of type.
+        exclude_types: Primary Location types to remove from the gold before scoring
+            (e.g. ``["Figure"]``). These reactions are excluded from both the matched
+            set and the coverage denominator — useful when a type was not in scope
+            for the extraction (e.g. Figures were not in the human validation set).
 
     Returns:
         A :class:`LenientScore` with aggregate metrics, coverage, per-type
@@ -336,6 +341,13 @@ def score_lenient(
     def _ptype(entry: dict) -> str:
         loc = remove_entry_from_location(entry.get("Location", {}) or {})
         return primary_type(loc.get("Type", "") or "")
+
+    # Drop excluded types from the gold entirely — they won't count toward
+    # coverage or scores (e.g. Figure reactions were not in scope for the
+    # human validation and should be excluded from AI benchmark comparisons).
+    if exclude_types:
+        excluded = {t.lower() for t in exclude_types}
+        gold_data = [e for e in gold_data if _ptype(e).lower() not in excluded]
 
     def _group_key(entry: dict) -> tuple:
         ref = entry.get("Reference") or ""

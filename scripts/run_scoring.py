@@ -21,6 +21,7 @@ def run_lenient_scoring(
     similarity_method="inchikey",
     type_aware_matching=True,
     strip_stereo=False,
+    exclude_types=None,
 ):
     """Run content-based (location-agnostic) scoring on submission data.
 
@@ -63,6 +64,7 @@ def run_lenient_scoring(
         similarity_method=similarity_method,
         type_aware_matching=type_aware_matching,
         strip_stereo=strip_stereo,
+        exclude_types=exclude_types,
     )
 
     # Console summary
@@ -373,6 +375,14 @@ if __name__ == "__main__":
         help="[lenient only] Strip stereochemistry from Reaction SMILES before comparison. "
              "Off by default so stereochemistry differences are reflected in the score.",
     )
+    parser.add_argument(
+        '--exclude-types', nargs='+', default=None,
+        metavar='TYPE',
+        help="[lenient only] Primary Location types to exclude from the gold before scoring "
+             "(e.g. --exclude-types Figure). These reactions are dropped from both the "
+             "matched set and the coverage denominator. Useful when a type was not in scope "
+             "for the extraction (Figures were not in the human validation set).",
+    )
     args = parser.parse_args()
 
     # Create output directory if it doesn't exist
@@ -393,6 +403,7 @@ if __name__ == "__main__":
             similarity_method=similarity_method,
             type_aware_matching=not args.global_match,
             strip_stereo=args.strip_stereo,
+            exclude_types=args.exclude_types,
         )
     else:
         run_scoring(args.submission_file, args.output_dir, similarity_method=similarity_method)
