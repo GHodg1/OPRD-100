@@ -39,10 +39,8 @@ def remove_entry_from_location(location):
         """
         if not isinstance(location, dict):
             return location
-        types = [t.strip() for t in location.get("Type", "").split(",")]
-        num_field = location.get("Num", "")
-        if num_field is None:
-            num_field = ""
+        types = [t.strip() for t in (location.get("Type") or "").split(",")]
+        num_field = location.get("Num") or ""
         nums = [n.strip() for n in num_field.split(";")]
         # Remove 'entry' and its corresponding num
         new_types = []
@@ -152,7 +150,7 @@ class DataComparer():
             location = entry['Location']
             location = remove_entry_from_location(location)
             reference = entry['Reference']
-            pairs.add((reference, location.get("Type", ""), location.get("Num", "")))
+            pairs.add((reference, location.get("Type") or "", location.get("Num") or ""))
         return pairs
 
 
@@ -176,7 +174,7 @@ class DataComparer():
             location = remove_entry_from_location(location)
             reference = entry['Reference']
             # Check pairs
-            if (reference, location.get("Type", ""), location.get("Num", "")) in pairs:
+            if (reference, location.get("Type") or "", location.get("Num") or "") in pairs:
                 oprd_subset.append(entry)
             
         return oprd_subset
@@ -209,7 +207,7 @@ class DataComparer():
                 location = entry['Location']
                 location = remove_entry_from_location(location)
                 reference = entry['Reference']
-                if (reference, location.get("Type", ""), location.get("Num", "")) == pair:
+                if (reference, location.get("Type") or "", location.get("Num") or "") == pair:
                     pair_counts_val[pair] += 1
             for entry in oprd_subset:
                 if not isinstance(entry, dict):
@@ -219,7 +217,7 @@ class DataComparer():
                 location = entry['Location']
                 location = remove_entry_from_location(location)
                 reference = entry['Reference']
-                if (reference, location.get("Type", ""), location.get("Num", "")) == pair:
+                if (reference, location.get("Type") or "", location.get("Num") or "") == pair:
                     pair_counts_oprd[pair] += 1
         return pair_counts_val, pair_counts_oprd
 

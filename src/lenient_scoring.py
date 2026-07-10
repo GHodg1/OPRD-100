@@ -342,7 +342,7 @@ def score_lenient(
 
     def _ptype(entry: dict) -> str:
         loc = remove_entry_from_location(entry.get("Location", {}) or {})
-        return primary_type(loc.get("Type", "") or "")
+        return primary_type(loc.get("Type") or "")
 
     # Drop excluded types from the gold entirely — they won't count toward
     # coverage or scores (e.g. Figure reactions were not in scope for the
