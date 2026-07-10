@@ -80,9 +80,11 @@ class DataComparer():
         # check if any of the locations in validation set are not in the OPRD data
         self.validation_pairs = self.generate_location_pairs(self.val_data)
         self.oprd_pairs = self.generate_location_pairs(self.oprd_data)
-        # Ensure validation pairs are a subset of OPRD pairs
-        assert self.validation_pairs.issubset(self.oprd_pairs), "Validation pairs are not a subset of OPRD pairs"
-        self.incorrect_validation_pairs = self.validation_pairs - self.validation_pairs.intersection(self.oprd_pairs)
+        # Predicted locations that do not exist in the gold set. These are simply not
+        # scored (they cannot be matched to any gold entry) and are reported for
+        # transparency. Extra predictions must NOT abort scoring — a submission that
+        # contains more reactions than the gold set is expected, not an error.
+        self.incorrect_validation_pairs = self.validation_pairs - self.oprd_pairs
         # Only use entries which are present in the validation set
         self.oprd_subset = self.subset_json()
         # Split and sort data by location type -  only considers single location datapoints currently

@@ -83,6 +83,24 @@ total_similarity = average of metrics 2–8 for a candidate reaction pair.
 
 
 
+## 🤖 Lenient Leaderboard (AI / OCSR Extraction)
+
+Content-based scoring for automated extraction (AI / OCSR). Reactions are matched by chemical/field similarity (Hungarian assignment), ignoring `Location` labels, and the reaction-SMILES metric uses graded Tanimoto by default. Ranked by **Score** (per-match quality x coverage).
+
+> The human re-extraction row (if present) marks the **maximum achievable** per-match quality under this method — a cross-referenceable target for AI systems.
+
+| Rank | Submitter | Score | Quality | Coverage | Experimental | Table | Scheme | Matched | Date | Details |
+|------|-----------|-------|---------|----------|--------------|-------|--------|---------|------|----------|
+| 1 | Human re-extraction (reference) | 0.154 | 0.893 | 17.3% | 0.822 | 0.901 | 0.872 | 190/1100 | 2026-07-10 | [PR #0](../../pull/0) |
+
+**Metrics explanation:**
+- **Score**: Combined per-match similarity × coverage (the headline ranking metric)
+- **Quality**: Mean similarity over matched reactions (the human-achievable ceiling)
+- **Coverage**: Fraction of in-scope gold reactions that were matched
+- **Experimental/Table/Scheme**: Per-type combined similarity over matched reactions
+- **Matched**: Matched reactions / gold reactions in the attempted papers
+
+
 ## Contributing
 - Open an issue to propose features, metrics, or bug fixes.
 

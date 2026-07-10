@@ -1,0 +1,31 @@
+{
+  "entries": [
+    {
+      "submitter": "Human re-extraction (reference)",
+      "date": "2026-07-10",
+      "pr_number": 0,
+      "scores": {
+        "mode": "lenient",
+        "similarity_method": "tanimoto",
+        "combined_mean": 0.8926745153870564,
+        "combined_mean_covered": 0.15418923447594612,
+        "coverage": 0.17272727272727273,
+        "exp_mean": 0.8215824043903277,
+        "table_mean": 0.9007768861773232,
+        "scheme_mean": 0.8720266695511432,
+        "reagent_name_mean": 0.7946491228070175,
+        "reagent_amount_mean": 0.9605263157894737,
+        "reaction_smiles_mean": 0.964699858071913,
+        "solvent_mean": 0.9210526315789473,
+        "time_mean": 0.9564778899883606,
+        "temperature_mean": 0.9263157894736842,
+        "yield_mean": 0.7995614035087719,
+        "reaction_steps_mean": 0.8894736842105263,
+        "num_matched": 190,
+        "num_gold": 1100,
+        "num_extracted": 190
+      },
+      "rank": 1
+    }
+  ]
+}

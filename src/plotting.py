@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import string
-from matplotlib_venn import venn2, venn2_circles
+#from matplotlib_venn import venn2, venn2_circles
 import matplotlib.patches as mpatches  
 from matplotlib import transforms as mtransforms
 from matplotlib.colors import to_rgba
