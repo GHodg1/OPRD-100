@@ -8,8 +8,14 @@ OPRD-100 supports **two scoring methodologies**, each with its own leaderboard:
 
 | Track | Command | Matching | Reaction-SMILES default | Leaderboard | Use for |
 |-------|---------|----------|-------------------------|-------------|---------|
-| **Strict** (validation) | `run_scoring.py` | Exact `(Reference, Type, Num)` location key | `inchikey` (binary) | `leaderboard.json` → "🏆 Leaderboard" | **Human re-extraction.** Requires stereochemistry and every location to be captured; this is how the validation set was evaluated in the paper. |
-| **Lenient** (AI / OCSR) | `run_scoring.py --lenient` | Content similarity (Hungarian), ignores `Location` | `tanimoto` (graded) | `leaderboard_lenient.json` → "🤖 Lenient Leaderboard" | **Automated extraction** (AI / OCSR) whose location labels cannot match the gold verbatim. |
+| **Lenient** (AI / OCSR) — **primary** | `run_scoring.py --lenient` | Content similarity (Hungarian), ignores `Location` | `tanimoto` (graded) | `leaderboard_lenient.json` → "🏆 Leaderboard — Automated Extraction" | **Automated extraction** (AI / OCSR). This is the track new submissions are scored on. |
+| **Strict** (validation) | `run_scoring.py` | Exact `(Reference, Type, Num)` location key | `inchikey` (binary) | `leaderboard.json` → "🔬 Validation — Human Re-extraction" | **Human re-extraction only** — the methodology check that establishes OPRD-100 as faithful ground truth (as evaluated in the paper). Not run for new submissions. |
+
+**New submissions are scored on the lenient track only.** The CI workflow
+(`.github/workflows/score_submission.yml`) runs `run_scoring.py --lenient` and updates the
+main "🏆 Leaderboard". The strict track is retained for reproducing the human-re-extraction
+validation and can still be run manually (`run_scoring.py` without `--lenient`), but is not
+part of the submission flow.
 
 **Why two tracks.** The strict scorer intentionally penalises any deviation (including
 location labels and stereochemistry) so it can certify a faithful human re-extraction.

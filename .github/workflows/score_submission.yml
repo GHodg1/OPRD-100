@@ -120,15 +120,17 @@ jobs:
         run: |
           mkdir -p ${{ steps.get_name.outputs.output_dir }}
       
-      - name: Run scoring notebook
+      - name: Run scoring
         id: run_scoring
         run: |
           # Set resource limits
           ulimit -v 4000000  # 4GB virtual memory limit
           ulimit -t 1800     # 30 minutes CPU time limit
-          
-          # Run with timeout as additional safety
-          timeout 25m python scripts/run_scoring.py \
+
+          # Submissions are scored with the lenient (content-based) method — the
+          # primary leaderboard track for automated extraction. Strict scoring is
+          # reserved for the human re-extraction validation and is not run here.
+          timeout 25m python scripts/run_scoring.py --lenient \
             --submission-file ${{ steps.get_name.outputs.submission_file }} \
             --output-dir ${{ steps.get_name.outputs.output_dir }}
         continue-on-error: true
@@ -148,7 +150,7 @@ jobs:
       - name: Extract scores
         id: extract_scores
         run: |
-          python scripts/extract_scores.py \
+          python scripts/extract_scores.py --mode lenient \
             --results-dir ${{ steps.get_name.outputs.output_dir }} \
             --output ${{ steps.get_name.outputs.output_dir }}/scores.json
           
@@ -160,31 +162,9 @@ jobs:
       
       - name: Update leaderboard
         run: |
-          python scripts/update_leaderboard.py \
-            --submitter "${{ steps.get_name.outputs.submitter_name }}" \
-            --scores-file ${{ steps.get_name.outputs.output_dir }}/scores.json \
-            --pr-number ${{ github.event.pull_request.number }}
-
-      - name: Run lenient scoring (AI / OCSR track)
-        run: |
-          ulimit -v 4000000  # 4GB virtual memory limit
-          ulimit -t 1800     # 30 minutes CPU time limit
-          timeout 25m python scripts/run_scoring.py --lenient \
-            --submission-file ${{ steps.get_name.outputs.submission_file }} \
-            --output-dir ${{ steps.get_name.outputs.output_dir }}_lenient
-        continue-on-error: true
-
-      - name: Extract lenient scores
-        run: |
-          python scripts/extract_scores.py --mode lenient \
-            --results-dir ${{ steps.get_name.outputs.output_dir }}_lenient \
-            --output ${{ steps.get_name.outputs.output_dir }}_lenient/scores.json
-
-      - name: Update lenient leaderboard
-        run: |
           python scripts/update_leaderboard.py --mode lenient \
             --submitter "${{ steps.get_name.outputs.submitter_name }}" \
-            --scores-file ${{ steps.get_name.outputs.output_dir }}_lenient/scores.json \
+            --scores-file ${{ steps.get_name.outputs.output_dir }}/scores.json \
             --pr-number ${{ github.event.pull_request.number }}
 
       - name: Commit results
@@ -192,9 +172,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add ${{ steps.get_name.outputs.output_dir }}
-          git add ${{ steps.get_name.outputs.output_dir }}_lenient
           git add README.md
-          git add leaderboard.json
           git add leaderboard_lenient.json
           if git diff --staged --quiet; then
             echo "No changes to commit"
@@ -209,34 +187,26 @@ jobs:
           script: |
             const fs = require('fs');
             const scoresPath = '${{ steps.get_name.outputs.output_dir }}/scores.json';
-            const scores = JSON.parse(fs.readFileSync(scoresPath, 'utf8'));
-
-            // Lenient (AI / OCSR) scores are optional — include them if the run produced them.
-            const lenientPath = '${{ steps.get_name.outputs.output_dir }}_lenient/scores.json';
-            let lenientSection = '';
-            if (fs.existsSync(lenientPath)) {
-              const l = JSON.parse(fs.readFileSync(lenientPath, 'utf8'));
-              lenientSection = `
-            ### Lenient (AI / OCSR) Summary
-            | Score (×cov) | Quality | Coverage | Experimental | Table | Scheme |
-            |--------------|---------|----------|--------------|-------|--------|
-            | ${l.combined_mean_covered.toFixed(3)} | ${l.combined_mean.toFixed(3)} | ${(l.coverage * 100).toFixed(1)}% | ${l.exp_mean.toFixed(3)} | ${l.table_mean.toFixed(3)} | ${l.scheme_mean.toFixed(3)} |
-            `;
-            }
+            const s = JSON.parse(fs.readFileSync(scoresPath, 'utf8'));
 
             const comment = `## 🎯 Scoring Results
-            
+
             Thank you for your submission, **${{ steps.get_name.outputs.submitter_name }}**!
-            
-            ### Results Summary (strict / validation)
-            | Metric | Experimental | Table | Scheme | Combined |
-            |--------|-------------|-------|--------|----------|
-            | Mean Similarity | ${scores.exp_mean.toFixed(3)} | ${scores.table_mean.toFixed(3)} | ${scores.scheme_mean.toFixed(3)} | ${scores.combined_mean.toFixed(3)} |
-            | Median Similarity | ${scores.exp_median.toFixed(3)} | ${scores.table_median.toFixed(3)} | ${scores.scheme_median.toFixed(3)} | ${scores.combined_median.toFixed(3)} |
-            ${lenientSection}
-            📊 Results and plots saved to: \`${{ steps.get_name.outputs.output_dir }}\`
-            
-            Check out the full leaderboards in the [README](../blob/main/README.md#-leaderboard)!
+
+            Scored with the **lenient (content-based)** method — the primary leaderboard track for automated extraction.
+
+            ### Results Summary
+            | Score (Quality×Coverage) | Quality | Coverage | Experimental | Table | Scheme | Matched |
+            |--------------------------|---------|----------|--------------|-------|--------|---------|
+            | ${s.combined_mean_covered.toFixed(3)} | ${s.combined_mean.toFixed(3)} | ${(s.coverage * 100).toFixed(1)}% | ${s.exp_mean.toFixed(3)} | ${s.table_mean.toFixed(3)} | ${s.scheme_mean.toFixed(3)} | ${s.num_matched}/${s.num_gold} |
+
+            - **Score** = Quality × Coverage (headline ranking metric)
+            - **Quality** = mean per-reaction similarity over matched reactions
+            - **Coverage** = fraction of ground-truth reactions matched in the papers you attempted
+
+            📊 Results saved to: \`${{ steps.get_name.outputs.output_dir }}\`
+
+            Check out the full leaderboard in the [README](../blob/main/README.md#-leaderboard--automated-extraction-ai--ocsr)!
             `;
             
             github.rest.issues.createComment({

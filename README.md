@@ -10,10 +10,13 @@ OPRD-100 is a ground-truth dataset of reaction data curated from 100 papers in O
 
 # Compute Scoring metrics for your dataset!
 
-There are two ways to evaluate your extraction method:
+The primary way to benchmark an automated extraction method (LLM, OCSR, rule-based) is
+the **lenient leaderboard** below. There are two ways to run the scoring:
 
 ### Option 1: Use the Jupyter Notebook (Manual)
-- Use the `example_scoring.ipynb` notebook in the notebooks folder
+- Use the `example_lenient_scoring.ipynb` notebook in the notebooks folder (the lenient,
+  content-based method used for the leaderboard). `example_scoring.ipynb` demonstrates the
+  strict method used for human-re-extraction validation.
 - Change the filepath to your own dataset
 - Run all cells to generate scores and visualizations
 
@@ -23,13 +26,37 @@ Submit your extracted data via pull request for automated scoring and public lea
 1. **Extract reactions** from OPRD-100 papers using your method
 2. **Format your data** following the [submission template](data/submissions/README.md)
 3. **Create a pull request** with your submission file in `data/submissions/`
-4. **Automated scoring** runs and adds your results to the leaderboard below
+4. **Automated scoring** runs with the **lenient (content-based)** method and adds your
+   results to the leaderboard below
 
 See detailed instructions in [data/submissions/README.md](data/submissions/README.md).
 
-## 🏆 Leaderboard
+## 🏆 Leaderboard — Automated Extraction (AI / OCSR)
 
-Submissions are automatically scored against the OPRD-100 validation dataset. Scores represent similarity metrics between extracted and ground-truth data. The submission by GHodg1 is a test submission of the full OPRD-100 dataset scored against itself. Reaction location classifications are simplified in the scoring workflow and so are different from those in the manuscript. Only reactions from Scheme/Table/Experimental are considered, so some reactions are missing from the full 3.8K reactions in OPRD-100.
+This is the primary OPRD-100 leaderboard. Automated extraction pipelines (LLM, OCSR, rule-based) are scored with the **lenient, content-based** method: each predicted reaction is paired to the ground truth by chemical and field similarity (Hungarian assignment) rather than by exact location labels, because automated tools rarely reproduce a paper's `(Scheme/Table/Experimental, number)` bookkeeping. The reaction-SMILES metric uses graded Morgan-Tanimoto, so chemically near-correct structures earn partial credit, and stereochemistry is kept.
+
+Entries are ranked by **Score = Quality × Coverage**, rewarding both accurate chemistry and completeness. The `Human re-extraction (reference)` row is the **ceiling** — the quality a careful human achieves under this method, and the target AI systems should aim for.
+
+| Rank | Submitter | Score | Quality | Coverage | Experimental | Table | Scheme | Matched | Date | Details |
+|------|-----------|-------|---------|----------|--------------|-------|--------|---------|------|----------|
+| 1 | Human re-extraction (reference) | 0.154 | 0.893 | 17.3% | 0.822 | 0.901 | 0.872 | 190/1100 | 2026-07-10 | [PR #0](../../pull/0) |
+
+**How to read the scores:**
+- **Score**: headline ranking metric, Quality × Coverage (max 1.0)
+- **Quality**: mean per-reaction similarity over matched reactions (the human-achievable ceiling)
+- **Coverage**: fraction of in-scope ground-truth reactions that were matched
+- **Experimental/Table/Scheme**: Quality broken down by ground-truth source location
+- **Matched**: matched reactions / ground-truth reactions in the attempted papers
+## 🔬 Validation — Human Re-extraction (Strict Scoring)
+
+This table is **not** a competitive leaderboard — it documents the strict validation that
+establishes OPRD-100 as a faithful ground-truth source. A human independently re-extracted
+reactions and they were scored with the **strict** method: reactions matched by exact
+`(Reference, Type, Num)` location key, stereochemistry required, and binary InChIKey SMILES
+matching. High scores here show that OPRD-100 is internally consistent and reproducible.
+The `GHodg1` row scores the full dataset against itself as a sanity check; location
+classifications are simplified relative to the manuscript, and only Scheme/Table/
+Experimental reactions are considered, so some of the full ~3.8K reactions are omitted.
 
 | Rank | Submitter | Combined | Experimental | Table | Scheme | Reactions | Date | Details |
 |------|-----------|----------|--------------|-------|--------|-----------|------|----------|
@@ -79,27 +106,6 @@ total_similarity = average of metrics 2–8 for a candidate reaction pair.
 ## Pairing strategy
 - Optimal pairing via Hungarian algorithm using total_similarity as the cost/score.
 - When counts differ, lowest-scoring unmatched reactions are excluded (affected 6 reactions in total during human validation).
-
-
-
-
-## 🤖 Lenient Leaderboard (AI / OCSR Extraction)
-
-Content-based scoring for automated extraction (AI / OCSR). Reactions are matched by chemical/field similarity (Hungarian assignment), ignoring `Location` labels, and the reaction-SMILES metric uses graded Tanimoto by default. Ranked by **Score** (per-match quality x coverage).
-
-> The human re-extraction row (if present) marks the **maximum achievable** per-match quality under this method — a cross-referenceable target for AI systems.
-
-| Rank | Submitter | Score | Quality | Coverage | Experimental | Table | Scheme | Matched | Date | Details |
-|------|-----------|-------|---------|----------|--------------|-------|--------|---------|------|----------|
-| 1 | Human re-extraction (reference) | 0.154 | 0.893 | 17.3% | 0.822 | 0.901 | 0.872 | 190/1100 | 2026-07-10 | [PR #0](../../pull/0) |
-
-**Metrics explanation:**
-- **Score**: Combined per-match similarity × coverage (the headline ranking metric)
-- **Quality**: Mean similarity over matched reactions (the human-achievable ceiling)
-- **Coverage**: Fraction of in-scope gold reactions that were matched
-- **Experimental/Table/Scheme**: Per-type combined similarity over matched reactions
-- **Matched**: Matched reactions / gold reactions in the attempted papers
-
 
 ## Contributing
 - Open an issue to propose features, metrics, or bug fixes.

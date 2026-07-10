@@ -21,12 +21,12 @@ MODE_CONFIG = {
     "strict": {
         "leaderboard_path": "leaderboard.json",
         "sort_key": lambda s: s.get("combined_mean", 0.0),
-        "section_pattern": r"## 🏆 Leaderboard.*?(?=\n## |\Z)",
+        "section_pattern": r"## 🔬 Validation.*?(?=\n## |\Z)",
     },
     "lenient": {
         "leaderboard_path": "leaderboard_lenient.json",
         "sort_key": lambda s: s.get("combined_mean_covered", 0.0),
-        "section_pattern": r"## 🤖 Lenient Leaderboard.*?(?=\n## |\Z)",
+        "section_pattern": r"## 🏆 Leaderboard.*?(?=\n## |\Z)",
     },
 }
 
@@ -85,11 +85,14 @@ def update_leaderboard(submitter, scores_file, pr_number, mode="strict"):
 
 
 def _render_strict_table(leaderboard):
-    table = "## 🏆 Leaderboard\n\n"
+    table = "## 🔬 Validation — Human Re-extraction (Strict Scoring)\n\n"
     table += (
-        "Strict, location-keyed scoring against the OPRD-100 validation dataset "
-        "(reactions matched by exact `(Reference, Type, Num)`). Used for human "
-        "re-extraction, where stereochemistry and every location must be captured.\n\n"
+        "This table is **not** a competitive leaderboard — it documents the strict "
+        "validation that establishes OPRD-100 as a faithful ground-truth source. A human "
+        "independently re-extracted reactions, scored with the **strict** method (reactions "
+        "matched by exact `(Reference, Type, Num)` location key, stereochemistry required, "
+        "binary InChIKey SMILES matching). High scores here show OPRD-100 is internally "
+        "consistent and reproducible.\n\n"
     )
     table += "| Rank | Submitter | Combined | Experimental | Table | Scheme | Reactions | Date | Details |\n"
     table += "|------|-----------|----------|--------------|-------|--------|-----------|------|----------|\n"
@@ -111,14 +114,19 @@ def _render_strict_table(leaderboard):
 
 
 def _render_lenient_table(leaderboard):
-    table = "## 🤖 Lenient Leaderboard (AI / OCSR Extraction)\n\n"
+    table = "## 🏆 Leaderboard — Automated Extraction (AI / OCSR)\n\n"
     table += (
-        "Content-based scoring for automated extraction (AI / OCSR). Reactions are "
-        "matched by chemical/field similarity (Hungarian assignment), ignoring "
-        "`Location` labels, and the reaction-SMILES metric uses graded Tanimoto by "
-        "default. Ranked by **Score** (per-match quality x coverage).\n\n"
-        "> The human re-extraction row (if present) marks the **maximum achievable** "
-        "per-match quality under this method — a cross-referenceable target for AI systems.\n\n"
+        "This is the primary OPRD-100 leaderboard. Automated extraction pipelines (LLM, "
+        "OCSR, rule-based) are scored with the **lenient, content-based** method: each "
+        "predicted reaction is paired to the ground truth by chemical and field similarity "
+        "(Hungarian assignment) rather than by exact location labels, because automated "
+        "tools rarely reproduce a paper's `(Scheme/Table/Experimental, number)` bookkeeping. "
+        "The reaction-SMILES metric uses graded Morgan-Tanimoto, so chemically near-correct "
+        "structures earn partial credit, and stereochemistry is kept.\n\n"
+        "Entries are ranked by **Score = Quality × Coverage**, rewarding both accurate "
+        "chemistry and completeness. The `Human re-extraction (reference)` row is the "
+        "**ceiling** — the quality a careful human achieves under this method, and the target "
+        "AI systems should aim for.\n\n"
     )
     table += "| Rank | Submitter | Score | Quality | Coverage | Experimental | Table | Scheme | Matched | Date | Details |\n"
     table += "|------|-----------|-------|---------|----------|--------------|-------|--------|---------|------|----------|\n"
@@ -135,12 +143,12 @@ def _render_lenient_table(leaderboard):
             f"{cov * 100:.1f}% | {exp} | {table_score} | {scheme} | {matched} | "
             f"{entry['date']} | [PR #{entry['pr_number']}](../../pull/{entry['pr_number']}) |\n"
         )
-    table += "\n**Metrics explanation:**\n"
-    table += "- **Score**: Combined per-match similarity × coverage (the headline ranking metric)\n"
-    table += "- **Quality**: Mean similarity over matched reactions (the human-achievable ceiling)\n"
-    table += "- **Coverage**: Fraction of in-scope gold reactions that were matched\n"
-    table += "- **Experimental/Table/Scheme**: Per-type combined similarity over matched reactions\n"
-    table += "- **Matched**: Matched reactions / gold reactions in the attempted papers\n\n"
+    table += "\n**How to read the scores:**\n"
+    table += "- **Score**: headline ranking metric, Quality × Coverage (max 1.0)\n"
+    table += "- **Quality**: mean per-reaction similarity over matched reactions (the human-achievable ceiling)\n"
+    table += "- **Coverage**: fraction of in-scope ground-truth reactions that were matched\n"
+    table += "- **Experimental/Table/Scheme**: Quality broken down by ground-truth source location\n"
+    table += "- **Matched**: matched reactions / ground-truth reactions in the attempted papers\n\n"
     return table
 
 
