@@ -49,19 +49,11 @@ Entries are ranked by **Score = Quality × Coverage**, rewarding both accurate c
 - **Matched**: matched reactions / ground-truth reactions in the attempted papers
 ## 🔬 Validation — Human Re-extraction (Strict Scoring)
 
-This table is **not** a competitive leaderboard — it documents the strict validation that
-establishes OPRD-100 as a faithful ground-truth source. A human independently re-extracted
-reactions and they were scored with the **strict** method: reactions matched by exact
-`(Reference, Type, Num)` location key, stereochemistry required, and binary InChIKey SMILES
-matching. High scores here show that OPRD-100 is internally consistent and reproducible.
-The `GHodg1` row scores the full dataset against itself as a sanity check; location
-classifications are simplified relative to the manuscript, and only Scheme/Table/
-Experimental reactions are considered, so some of the full ~3.8K reactions are omitted.
+This table is **not** a competitive leaderboard — it documents the strict validation that establishes OPRD-100 as a faithful ground-truth source. A human independently re-extracted reactions, scored with the **strict** method (reactions matched by exact `(Reference, Type, Num)` location key, stereochemistry required, binary InChIKey SMILES matching). High scores here show OPRD-100 is internally consistent and reproducible.
 
 | Rank | Submitter | Combined | Experimental | Table | Scheme | Reactions | Date | Details |
 |------|-----------|----------|--------------|-------|--------|-----------|------|----------|
-| 1 | GHodg1 | 1.000 | 1.000 | 1.000 | 1.000 | 3537 | 2026-01-10 | [PR #6](../../pull/6) |
-| 2 | test_workflow_submission | 0.933 | N/A | N/A | 0.933 | 5 | 2026-01-03 | [PR #5](../../pull/5) |
+| 1 | Human re-extraction (validation) | 0.882 | 0.817 | 0.892 | 0.847 | 189 | 2026-07-10 | [PR #0](../../pull/0) |
 
 **Metrics explanation:**
 - **Combined**: Average similarity across all reaction types (higher is better, max 1.0)
