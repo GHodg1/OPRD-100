@@ -312,15 +312,17 @@ def score_lenient(
         type_aware_matching: If ``True`` (default), match only within the same
             primary Location type (Scheme↔Scheme, Table↔Table, …). If ``False``,
             match globally per paper regardless of type.
-        exclude_types: Primary Location types to remove from the gold before scoring
-            (e.g. ``["Figure"]``). These reactions are excluded from both the matched
-            set and the coverage denominator — useful when a type was not in scope
-            for the extraction (e.g. Figures were not in the human validation set).
+        exclude_types: Primary Location types to remove from the gold before scoring.
+            Defaults to ``["Figure"]`` — Figure reactions were not in scope for the
+            human validation set, so excluding them gives a fair like-for-like
+            comparison against the human benchmark. Pass ``[]`` to include all types.
 
     Returns:
         A :class:`LenientScore` with aggregate metrics, coverage, per-type
         breakdown, and the raw per-match DataFrame.
     """
+    if exclude_types is None:
+        exclude_types = ["Figure"]
     if similarity_method not in ("inchikey", "tanimoto"):
         raise ValueError(
             f"similarity_method must be 'inchikey' or 'tanimoto', got {similarity_method!r}"

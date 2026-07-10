@@ -39,7 +39,7 @@ Entries are ranked by **Score = Quality × Coverage**, rewarding both accurate c
 
 | Rank | Submitter | Score | Quality | Coverage | Experimental | Table | Scheme | Matched | Date | Details |
 |------|-----------|-------|---------|----------|--------------|-------|--------|---------|------|----------|
-| 1 | Human re-extraction (reference) | 0.154 | 0.893 | 17.3% | 0.822 | 0.901 | 0.872 | 190/1100 | 2026-07-10 | [PR #0](../../pull/0) |
+| 1 | Human re-extraction (reference) | 0.157 | 0.893 | 17.6% | 0.822 | 0.901 | 0.872 | 190/1078 | 2026-07-10 | [PR #0](../../pull/0) |
 
 **How to read the scores:**
 - **Score**: headline ranking metric, Quality × Coverage (max 1.0)

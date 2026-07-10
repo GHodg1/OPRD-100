@@ -29,7 +29,13 @@ def run_lenient_scoring(
     (Hungarian assignment) rather than exact ``(Reference, Type, Num)`` location
     keys. Appropriate for automated extractors whose location labels cannot match
     the gold verbatim. The strict scorer remains available via :func:`run_scoring`.
+
+    ``exclude_types`` defaults to ``["Figure"]`` because Figure reactions were
+    not in scope for the human validation set, so AI submissions are scored on
+    the same Scheme / Table / Experimental types as the human benchmark.
     """
+    if exclude_types is None:
+        exclude_types = ["Figure"]
     print(f"Loading submission from: {submission_file}")
     print(f"Output directory: {output_dir}")
     print(f"Similarity method: {similarity_method}")
@@ -376,12 +382,12 @@ if __name__ == "__main__":
              "Off by default so stereochemistry differences are reflected in the score.",
     )
     parser.add_argument(
-        '--exclude-types', nargs='+', default=None,
+        '--exclude-types', nargs='+', default=["Figure"],
         metavar='TYPE',
-        help="[lenient only] Primary Location types to exclude from the gold before scoring "
-             "(e.g. --exclude-types Figure). These reactions are dropped from both the "
-             "matched set and the coverage denominator. Useful when a type was not in scope "
-             "for the extraction (Figures were not in the human validation set).",
+        help="[lenient only] Primary Location types to exclude from the gold before scoring. "
+             "Default: Figure (Figures were not in scope for the human validation set, so "
+             "excluding them gives a fair like-for-like comparison). Pass --exclude-types '' "
+             "to score against all types including Figures.",
     )
     args = parser.parse_args()
 
