@@ -191,12 +191,15 @@ class DataComparer():
         # generate pairs for
         val_pairs = self.generate_location_pairs(val_subset)
         oprd_pairs = self.generate_location_pairs(oprd_subset)
-        # check if the pairs are the same
-        if val_pairs != oprd_pairs:
-            raise ValueError("The OPRD and val data do not have the same location pairs.")
-        pair_counts_val = {pair: 0 for pair in val_pairs}
-        pair_counts_oprd = {pair: 0 for pair in val_pairs}
-        for pair in val_pairs:
+        # Count over the UNION of location pairs so the comparison works even when the
+        # submission and gold do not share exactly the same locations (e.g. an automated
+        # extractor that misses some locations or adds extras). Pairs absent from one
+        # side simply count 0 there. (Human re-extraction has identical pair sets, so
+        # this is a no-op for the validation scenario.)
+        all_pairs = val_pairs | oprd_pairs
+        pair_counts_val = {pair: 0 for pair in all_pairs}
+        pair_counts_oprd = {pair: 0 for pair in all_pairs}
+        for pair in all_pairs:
             if not isinstance(pair, tuple) or len(pair) != 3:
                 raise ValueError("Each pair should be a tuple of (Reference, Type, Num).")
             for entry in val_subset:

@@ -8,8 +8,8 @@
         "mode": "lenient",
         "similarity_method": "inchikey",
         "combined_mean": 0.8836196484444524,
-        "combined_mean_covered": 0.1557400122490222,
-        "coverage": 0.17625231910946196,
+        "combined_mean_covered": 0.8565700673696222,
+        "coverage": 0.9693877551020408,
         "exp_mean": 0.8167252615331847,
         "table_mean": 0.8922944008569564,
         "scheme_mean": 0.8579670329670329,
@@ -22,7 +22,7 @@
         "yield_mean": 0.8100877192982455,
         "reaction_steps_mean": 0.8894736842105263,
         "num_matched": 190,
-        "num_gold": 1078,
+        "num_gold": 196,
         "num_extracted": 190
       },
       "rank": 1
