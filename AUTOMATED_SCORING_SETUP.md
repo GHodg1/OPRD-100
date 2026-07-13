@@ -8,7 +8,7 @@ OPRD-100 supports **two scoring methodologies**, each with its own leaderboard:
 
 | Track | Command | Matching | Reaction-SMILES default | Leaderboard | Use for |
 |-------|---------|----------|-------------------------|-------------|---------|
-| **Lenient** (AI / OCSR) — **primary** | `run_scoring.py --lenient` | Content similarity (Hungarian), ignores `Location` | `tanimoto` (graded) | `leaderboard_lenient.json` → "🏆 Leaderboard — Automated Extraction" | **Automated extraction** (AI / OCSR). This is the track new submissions are scored on. |
+| **Lenient** (AI / OCSR) — **primary** | `run_scoring.py --lenient` | Content similarity (Hungarian), ignores `Location` | `inchikey` (binary) | `leaderboard_lenient.json` → "🏆 Leaderboard — Automated Extraction" | **Automated extraction** (AI / OCSR). This is the track new submissions are scored on. |
 | **Strict** (validation) | `run_scoring.py` | Exact `(Reference, Type, Num)` location key | `inchikey` (binary) | `leaderboard.json` → "🔬 Validation — Human Re-extraction" | **Human re-extraction only** — the methodology check that establishes OPRD-100 as faithful ground truth (as evaluated in the paper). Not run for new submissions. |
 
 **New submissions are scored on the lenient track only.** The CI workflow
@@ -25,9 +25,9 @@ unmatched. The lenient track pairs reactions by chemistry instead, giving a fair
 for AI/OCSR while leaving the strict validation methodology unchanged.
 
 **Lenient defaults** (recommended for AI/OCSR):
-- `--similarity-method tanimoto` — graded Morgan-Tanimoto (binary InChIKey understates
-  chemically near-correct structures). Applied automatically when `--lenient` is used
-  and `--similarity-method` is not given.
+- `--similarity-method inchikey` — exact InChIKey-set overlap, the same reaction-SMILES
+  metric as the strict validation scorer. Pass `--similarity-method tanimoto` for graded
+  Morgan-Tanimoto (partial credit for near-identical structures) if desired.
 - Stereochemistry is **kept** (`--strip-stereo` is off by default).
 - Type-aware matching (Scheme↔Scheme, Table↔Table, Experimental↔Experimental); use
   `--global-match` to match across types.
@@ -126,7 +126,7 @@ python scripts/update_leaderboard.py \
 # --- LENIENT (AI / OCSR) track ---
 python scripts/run_scoring.py --lenient \
   --submission-file data/submissions/example_submission.json \
-  --output-dir results/test_run_lenient          # defaults to --similarity-method tanimoto
+  --output-dir results/test_run_lenient          # defaults to --similarity-method inchikey
 
 python scripts/extract_scores.py --mode lenient \
   --results-dir results/test_run_lenient \

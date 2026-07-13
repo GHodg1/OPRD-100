@@ -33,13 +33,13 @@ See detailed instructions in [data/submissions/README.md](data/submissions/READM
 
 ## 🏆 Leaderboard — Automated Extraction (AI / OCSR)
 
-This is the primary OPRD-100 leaderboard. Automated extraction pipelines (LLM, OCSR, rule-based) are scored with the **lenient, content-based** method: each predicted reaction is paired to the ground truth by chemical and field similarity (Hungarian assignment) rather than by exact location labels, because automated tools rarely reproduce a paper's `(Scheme/Table/Experimental, number)` bookkeeping. The reaction-SMILES metric uses graded Morgan-Tanimoto, so chemically near-correct structures earn partial credit, and stereochemistry is kept.
+This is the primary OPRD-100 leaderboard. Automated extraction pipelines (LLM, OCSR, rule-based) are scored with the **lenient, content-based** method: each predicted reaction is paired to the ground truth by chemical and field similarity (Hungarian assignment) rather than by exact location labels, because automated tools rarely reproduce a paper's `(Scheme/Table/Experimental, number)` bookkeeping. The reaction-SMILES metric uses exact InChIKey-set overlap (the same metric as the strict validation scorer), and stereochemistry is kept.
 
 Entries are ranked by **Score = Quality × Coverage**, rewarding both accurate chemistry and completeness. The `Human re-extraction (reference)` row is the **ceiling** — the quality a careful human achieves under this method, and the target AI systems should aim for.
 
 | Rank | Submitter | Score | Quality | Coverage | Experimental | Table | Scheme | Matched | Date | Details |
 |------|-----------|-------|---------|----------|--------------|-------|--------|---------|------|----------|
-| 1 | Human re-extraction (reference) | 0.157 | 0.893 | 17.6% | 0.822 | 0.901 | 0.872 | 190/1078 | 2026-07-10 | [PR #0](../../pull/0) |
+| 1 | Human re-extraction (reference) | 0.156 | 0.884 | 17.6% | 0.817 | 0.892 | 0.858 | 190/1078 | 2026-07-13 | [PR #0](../../pull/0) |
 
 **How to read the scores:**
 - **Score**: headline ranking metric, Quality × Coverage (max 1.0)

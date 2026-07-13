@@ -360,10 +360,10 @@ if __name__ == "__main__":
     parser.add_argument('--submission-file', required=True, help='Path to submission JSON file')
     parser.add_argument('--output-dir', required=True, help='Directory to save results')
     parser.add_argument(
-        '--similarity-method', default=None, choices=['inchikey', 'tanimoto'],
-        help="Reaction-SMILES similarity: 'inchikey' (exact InChIKey-set Jaccard) or "
-             "'tanimoto' (graded Morgan-Tanimoto — partial credit for near-identical "
-             "molecules). Default: 'inchikey' for strict, 'tanimoto' for --lenient.",
+        '--similarity-method', default='inchikey', choices=['inchikey', 'tanimoto'],
+        help="Reaction-SMILES similarity: 'inchikey' (default, exact InChIKey-set Jaccard) "
+             "or 'tanimoto' (graded Morgan-Tanimoto — partial credit for near-identical "
+             "molecules). Used by both the strict and lenient tracks.",
     )
     parser.add_argument(
         '--lenient', action='store_true',
@@ -394,13 +394,9 @@ if __name__ == "__main__":
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Resolve the default similarity method per mode: the recommended default for the
-    # AI/OCSR (lenient) track is graded Tanimoto, since binary InChIKey scoring gives 0
-    # for chemically near-correct structures and understates real performance. The
-    # validation (strict) track keeps exact InChIKey matching.
+    # Both tracks default to exact InChIKey-set SMILES similarity. Pass
+    # --similarity-method tanimoto for graded Morgan-Tanimoto instead.
     similarity_method = args.similarity_method
-    if similarity_method is None:
-        similarity_method = "tanimoto" if args.lenient else "inchikey"
 
     if args.lenient:
         run_lenient_scoring(
