@@ -11,7 +11,8 @@ Runs the scoring analysis from `example_scoring.ipynb` programmatically on submi
 ```bash
 python scripts/run_scoring.py \
   --submission-file data/submissions/your_submission.json \
-  --output-dir results/your_name_timestamp
+  --output-dir results/your_name_timestamp \
+  [--similarity-method inchikey|tanimoto]
 ```
 
 **What it does:**
@@ -19,6 +20,24 @@ python scripts/run_scoring.py \
 - Computes similarity scores for experimental, scheme, and table reactions
 - Generates all plots from the example notebook
 - Saves results as CSV files
+
+**Reaction-SMILES similarity method** (`--similarity-method`, default `inchikey`):
+- `inchikey` — binary InChIKey-set Jaccard of reactants and products (a molecule matches
+  exactly or scores 0). This is the canonical leaderboard metric.
+- `tanimoto` — graded Morgan-Tanimoto (radius 2, 2048 bits): near-identical molecules
+  (e.g. ethyl vs butyl esters, stereochemistry, salt forms) receive partial credit instead
+  of 0. Also drives reaction matching, so the Hungarian assignment picks the closest gold
+  reaction. Only the reaction-SMILES sub-score changes; all other field metrics are identical.
+
+### `run_validation_benchmark.py`
+Scores the human re-extraction study (`data/validation_reactions.json`) against the
+ground truth under **both** similarity methods and prints a per-metric comparison — use it
+to confirm the Tanimoto option preserves strong scores on trusted data.
+
+**Usage:**
+```bash
+python scripts/run_validation_benchmark.py
+```
 
 ### `extract_scores.py`
 Extracts key metrics from scoring results for leaderboard display.

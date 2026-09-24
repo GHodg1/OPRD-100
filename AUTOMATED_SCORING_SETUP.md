@@ -2,6 +2,42 @@
 
 This document provides an overview of the automated scoring system for OPRD-100 submissions.
 
+## 🧭 Two scoring tracks
+
+OPRD-100 supports **two scoring methodologies**, each with its own leaderboard:
+
+| Track | Command | Matching | Reaction-SMILES default | Leaderboard | Use for |
+|-------|---------|----------|-------------------------|-------------|---------|
+| **Lenient** (AI / OCSR) — **primary** | `run_scoring.py --lenient` | Content similarity (Hungarian), ignores `Location` | `inchikey` (binary) | `leaderboard_lenient.json` → "🏆 Leaderboard — Automated Extraction" | **Automated extraction** (AI / OCSR). This is the track new submissions are scored on. |
+| **Strict** (validation) | `run_scoring.py` | Exact `(Reference, Type, Num)` location key | `inchikey` (binary) | `leaderboard.json` → "🔬 Validation — Human Re-extraction" | **Human re-extraction only** — the methodology check that establishes OPRD-100 as faithful ground truth (as evaluated in the paper). Not run for new submissions. |
+
+**New submissions are scored on the lenient track only.** The CI workflow
+(`.github/workflows/score_submission.yml`) runs `run_scoring.py --lenient` and updates the
+main "🏆 Leaderboard". The strict track is retained for reproducing the human-re-extraction
+validation and can still be run manually (`run_scoring.py` without `--lenient`), but is not
+part of the submission flow.
+
+**Why two tracks.** The strict scorer intentionally penalises any deviation (including
+location labels and stereochemistry) so it can certify a faithful human re-extraction.
+Automated extractors discover the right chemistry but rarely reproduce the exact
+`(Reference, Type, Num)` keys, so strict scoring leaves most of their reactions
+unmatched. The lenient track pairs reactions by chemistry instead, giving a fair signal
+for AI/OCSR while leaving the strict validation methodology unchanged.
+
+**Lenient defaults** (recommended for AI/OCSR):
+- `--similarity-method inchikey` — exact InChIKey-set overlap, the same reaction-SMILES
+  metric as the strict validation scorer. Pass `--similarity-method tanimoto` for graded
+  Morgan-Tanimoto (partial credit for near-identical structures) if desired.
+- Stereochemistry is **kept** (`--strip-stereo` is off by default).
+- Type-aware matching (Scheme↔Scheme, Table↔Table, Experimental↔Experimental); use
+  `--global-match` to match across types.
+
+**Human reference target.** Scoring the human validation set with the *lenient* method
+gives the **maximum per-match quality achievable by a human** under this methodology —
+seeded into the lenient leaderboard as a cross-referenceable target for AI systems. See
+`notebooks/example_scoring.ipynb` for a single walkthrough of both the strict paper
+validation and lenient automated-extraction workflows.
+
 ## 🎯 What This Does
 
 When someone submits their extracted reaction data via a pull request:
@@ -73,20 +109,32 @@ Workflow:
 Before pushing to GitHub, test the system:
 
 ```bash
-# Create test submission
+# --- STRICT (validation) track ---
 python scripts/run_scoring.py \
   --submission-file data/submissions/example_submission.json \
   --output-dir results/test_run
 
-# Extract scores
 python scripts/extract_scores.py \
   --results-dir results/test_run \
   --output results/test_run/scores.json
 
-# Update leaderboard
 python scripts/update_leaderboard.py \
   --submitter "Test" \
   --scores-file results/test_run/scores.json \
+  --pr-number 0
+
+# --- LENIENT (AI / OCSR) track ---
+python scripts/run_scoring.py --lenient \
+  --submission-file data/submissions/example_submission.json \
+  --output-dir results/test_run_lenient          # defaults to --similarity-method inchikey
+
+python scripts/extract_scores.py --mode lenient \
+  --results-dir results/test_run_lenient \
+  --output results/test_run_lenient/scores.json
+
+python scripts/update_leaderboard.py --mode lenient \
+  --submitter "Test" \
+  --scores-file results/test_run_lenient/scores.json \
   --pr-number 0
 ```
 

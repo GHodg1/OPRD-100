@@ -8,6 +8,61 @@ import numpy as np
 import os
 
 
+def extract_lenient_scores(results_dir, output_file):
+    """Flatten a lenient scoring run's ``lenient_scores.json`` into a leaderboard record.
+
+    The lenient scorer (``run_scoring.py --lenient``) already writes
+    ``lenient_scores.json`` with all aggregate metrics plus a ``per_type_breakdown``.
+    This lifts the per-type ``combined_mean`` values to top-level ``scheme_mean`` /
+    ``table_mean`` / ``exp_mean`` so the lenient leaderboard can render them the same
+    way the strict leaderboard does.
+    """
+    print(f"Extracting lenient scores from: {results_dir}")
+    with open(os.path.join(results_dir, "lenient_scores.json")) as f:
+        raw = json.load(f)
+
+    breakdown = raw.get("per_type_breakdown", {})
+
+    def _type_combined(t):
+        return float(breakdown.get(t, {}).get("combined_mean", 0.0))
+
+    scores = {
+        "mode": "lenient",
+        "similarity_method": raw.get("similarity_method", "tanimoto"),
+        # Headline
+        "combined_mean": float(raw.get("combined_mean", 0.0)),           # per-match quality
+        "combined_mean_covered": float(raw.get("combined_mean_covered", 0.0)),  # x coverage
+        "coverage": float(raw.get("coverage", 0.0)),
+        # Per-type combined (from the breakdown)
+        "exp_mean": _type_combined("Experimental"),
+        "table_mean": _type_combined("Table"),
+        "scheme_mean": _type_combined("Scheme"),
+        # Individual metric means (over matched pairs)
+        "reagent_name_mean": float(raw.get("reagent_name_mean", 0.0)),
+        "reagent_amount_mean": float(raw.get("reagent_amount_mean", 0.0)),
+        "reaction_smiles_mean": float(raw.get("reaction_smiles_mean", 0.0)),
+        "solvent_mean": float(raw.get("solvent_mean", 0.0)),
+        "time_mean": float(raw.get("time_mean", 0.0)),
+        "temperature_mean": float(raw.get("temperature_mean", 0.0)),
+        "yield_mean": float(raw.get("yield_mean", 0.0)),
+        "reaction_steps_mean": float(raw.get("reaction_steps_mean", 0.0)),
+        # Counts
+        "num_matched": int(raw.get("num_matched", 0)),
+        "num_gold": int(raw.get("num_gold", 0)),
+        "num_extracted": int(raw.get("num_extracted", 0)),
+    }
+
+    with open(output_file, "w") as f:
+        json.dump(scores, f, indent=2)
+
+    print(f"Scores saved to: {output_file}")
+    print(f"Combined mean (matched)   : {scores['combined_mean']:.3f}")
+    print(f"Combined x coverage       : {scores['combined_mean_covered']:.3f}")
+    print(f"Coverage                  : {scores['num_matched']}/{scores['num_gold']} "
+          f"({100 * scores['coverage']:.1f}%)")
+    return scores
+
+
 def extract_scores(results_dir, output_file):
     """Extract key metrics from scoring results."""
     
@@ -73,6 +128,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract scores from results')
     parser.add_argument('--results-dir', required=True, help='Directory containing results CSV files')
     parser.add_argument('--output', required=True, help='Output JSON file path')
+    parser.add_argument(
+        '--mode', default='strict', choices=['strict', 'lenient'],
+        help="Which scoring run to extract: 'strict' (reads *_results.csv) or "
+             "'lenient' (reads lenient_scores.json).",
+    )
     args = parser.parse_args()
-    
-    extract_scores(args.results_dir, args.output)
+
+    if args.mode == 'lenient':
+        extract_lenient_scores(args.results_dir, args.output)
+    else:
+        extract_scores(args.results_dir, args.output)

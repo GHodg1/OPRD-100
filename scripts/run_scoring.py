@@ -11,15 +11,121 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 import pandas as pd
 import numpy as np
 from validation import DataComparer
-from plotting import Plot
+from lenient_scoring import score_lenient
 from security import validate_submission
 
 
-def run_scoring(submission_file, output_dir):
+def run_lenient_scoring(
+    submission_file,
+    output_dir,
+    similarity_method="inchikey",
+    type_aware_matching=True,
+    strip_stereo=False,
+    exclude_types=None,
+):
+    """Run content-based (location-agnostic) scoring on submission data.
+
+    Unlike :func:`run_scoring`, reactions are matched by chemical/field similarity
+    (Hungarian assignment) rather than exact ``(Reference, Type, Num)`` location
+    keys. Appropriate for automated extractors whose location labels cannot match
+    the gold verbatim. The strict scorer remains available via :func:`run_scoring`.
+
+    ``exclude_types`` defaults to ``["Figure"]`` because Figure reactions were
+    not in scope for the human validation set, so AI submissions are scored on
+    the same Scheme / Table / Experimental types as the human benchmark.
+    """
+    if exclude_types is None:
+        exclude_types = ["Figure"]
+    print(f"Loading submission from: {submission_file}")
+    print(f"Output directory: {output_dir}")
+    print(f"Similarity method: {similarity_method}")
+    print(f"Matching: {'type-aware' if type_aware_matching else 'global per paper'}")
+
+    # SECURITY: Validate submission file before processing
+    print("Validating submission for security threats...")
+    is_valid, error_msg, submission = validate_submission(submission_file)
+    if not is_valid:
+        print(f"❌ SECURITY VALIDATION FAILED: {error_msg}")
+        print("Submission rejected due to security concerns.")
+        sys.exit(1)
+    print("✅ Security validation passed")
+
+    submitter_name = submission.get('submitter_name', 'anonymous')
+    method_description = submission.get('method_description', 'N/A')
+    print(f"Submitter: {submitter_name}")
+    print(f"Method: {method_description}")
+
+    output_dir_abs = os.path.abspath(output_dir)
+    os.makedirs(output_dir_abs, exist_ok=True)
+
+    # Write the submission reactions to a temp file the scorer can read.
+    submission_data_path = os.path.join(output_dir_abs, "submission_data.json")
+    with open(submission_data_path, 'w') as f:
+        json.dump(submission['reactions'], f, indent=2)
+
+    print("Computing lenient (content-matched) scores...")
+    score = score_lenient(
+        submission_data_path,
+        output_dir=output_dir_abs,
+        similarity_method=similarity_method,
+        type_aware_matching=type_aware_matching,
+        strip_stereo=strip_stereo,
+        exclude_types=exclude_types,
+    )
+
+    # Console summary
+    print("")
+    print("=" * 60)
+    print(f"  LENIENT SCORES ({similarity_method}) — {submitter_name}")
+    print("=" * 60)
+    print(f"  Total similarity (matched pairs) : {score.combined_mean:.3f}")
+    print(f"  Total similarity x coverage      : {score.combined_mean_covered:.3f}")
+    print(f"  Coverage (matched / gold)        : {score.num_matched}/{score.num_gold} "
+          f"({100.0 * score.coverage:.1f}%)")
+    print(f"  Reactions extracted / gold       : {score.num_extracted} / {score.num_gold}")
+    print(f"  - Reaction SMILES : {score.reaction_smiles_mean:.3f}")
+    print(f"  - Reaction steps  : {score.reaction_steps_mean:.3f}")
+    print(f"  - Yield           : {score.yield_mean:.3f}")
+    print(f"  - Reagent names   : {score.reagent_name_mean:.3f}")
+    print(f"  - Reagent amounts : {score.reagent_amount_mean:.3f}")
+    print(f"  - Solvents        : {score.solvent_mean:.3f}")
+    print(f"  - Time            : {score.time_mean:.3f}")
+    print(f"  - Temperature     : {score.temperature_mean:.3f}")
+    print("")
+    print("  Per-type breakdown:")
+    print(f"    {'Type':14s} {'combined':>9s} {'SMILES':>8s} {'matched':>9s} {'gold':>6s}")
+    for ptype, b in score.per_type_breakdown().items():
+        print(f"    {ptype:14s} {b['combined_mean']:9.3f} {b['reaction_smiles_mean']:8.3f} "
+              f"{int(b['num_matched']):>4d}/{int(b['num_gold']):<4d} {int(b['num_predicted']):>6d}")
+
+    # Save submission metadata
+    metadata = {
+        'submitter_name': submitter_name,
+        'method_description': method_description,
+        'repository_url': submission.get('repository_url', ''),
+        'paper_url': submission.get('paper_url', ''),
+        'contact_email': submission.get('contact_email', ''),
+        'scoring_mode': 'lenient',
+        'similarity_method': similarity_method,
+        'num_extracted': score.num_extracted,
+        'num_gold': score.num_gold,
+        'num_matched': score.num_matched,
+        'coverage': score.coverage,
+    }
+    with open(os.path.join(output_dir_abs, "metadata.json"), 'w') as f:
+        json.dump(metadata, f, indent=2)
+
+    print("\nLenient scoring complete!")
+    return score
+
+
+
+def run_scoring(submission_file, output_dir, similarity_method="inchikey"):
     """Run scoring analysis on submission data."""
     
     print(f"Loading submission from: {submission_file}")
     print(f"Output directory: {output_dir}")
+    print(f"Similarity method: {similarity_method}")
     
     # SECURITY: Validate submission file before processing
     print("Validating submission for security threats...")
@@ -58,7 +164,7 @@ def run_scoring(submission_file, output_dir):
     # Make submission path absolute before changing directory
     submission_data_path_abs = os.path.abspath(os.path.join(original_dir, submission_data_path))
     
-    dc = DataComparer(submission_data_path_abs)
+    dc = DataComparer(submission_data_path_abs, similarity_method=similarity_method)
     
     # Run all the same analyses as in example_scoring.ipynb
     print("Computing comparison scores...")
@@ -108,6 +214,7 @@ def run_scoring(submission_file, output_dir):
 
 def generate_all_plots(dc, exp_results, scheme_results, table_results, combined_results, output_dir):
     """Generate all plots from example_scoring.ipynb"""
+    from plotting import Plot
     
     # Plot 1: Entry count comparison
     print("  - Entry count comparison...")
@@ -191,6 +298,7 @@ def generate_all_plots(dc, exp_results, scheme_results, table_results, combined_
 
 def plot_score_distributions(results, num_reactions, category, output_dir, filename,):
     """Plot score distribution histograms for a category of results."""
+    from plotting import Plot
     
     shared_title_fontdict = {'fontsize': 16, 'fontweight': 'bold'}
     label_fontdict = {'fontsize': 14}
@@ -251,9 +359,53 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run scoring analysis on submission data')
     parser.add_argument('--submission-file', required=True, help='Path to submission JSON file')
     parser.add_argument('--output-dir', required=True, help='Directory to save results')
+    parser.add_argument(
+        '--similarity-method', default='inchikey', choices=['inchikey', 'tanimoto'],
+        help="Reaction-SMILES similarity: 'inchikey' (default, exact InChIKey-set Jaccard) "
+             "or 'tanimoto' (graded Morgan-Tanimoto — partial credit for near-identical "
+             "molecules). Used by both the strict and lenient tracks.",
+    )
+    parser.add_argument(
+        '--lenient', action='store_true',
+        help="Use content-based matching (Hungarian on chemical/field similarity) instead of "
+             "strict (Reference, Type, Num) location keys. Appropriate for automated extractors "
+             "(AI/OCSR) whose location labels cannot match the gold verbatim.",
+    )
+    parser.add_argument(
+        '--global-match', action='store_true',
+        help="[lenient only] Match reactions globally per paper, ignoring Location type. "
+             "Default matches within the same primary type (Scheme/Table/Experimental).",
+    )
+    parser.add_argument(
+        '--strip-stereo', action='store_true',
+        help="[lenient only] Strip stereochemistry from Reaction SMILES before comparison. "
+             "Off by default so stereochemistry differences are reflected in the score.",
+    )
+    parser.add_argument(
+        '--exclude-types', nargs='+', default=["Figure"],
+        metavar='TYPE',
+        help="[lenient only] Primary Location types to exclude from the gold before scoring. "
+             "Default: Figure (Figures were not in scope for the human validation set, so "
+             "excluding them gives a fair like-for-like comparison). Pass --exclude-types '' "
+             "to score against all types including Figures.",
+    )
     args = parser.parse_args()
-    
+
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
-    
-    run_scoring(args.submission_file, args.output_dir)
+
+    # Both tracks default to exact InChIKey-set SMILES similarity. Pass
+    # --similarity-method tanimoto for graded Morgan-Tanimoto instead.
+    similarity_method = args.similarity_method
+
+    if args.lenient:
+        run_lenient_scoring(
+            args.submission_file,
+            args.output_dir,
+            similarity_method=similarity_method,
+            type_aware_matching=not args.global_match,
+            strip_stereo=args.strip_stereo,
+            exclude_types=args.exclude_types,
+        )
+    else:
+        run_scoring(args.submission_file, args.output_dir, similarity_method=similarity_method)
