@@ -8,17 +8,27 @@ OPRD-100 is a ground-truth dataset of reaction data curated from 100 papers in O
 - Multiple similarity metrics for comparing structured reaction data.
 - Example notebooks with code and plots illustrating the metrics.
 
-# Compute Scoring metrics for your dataset!
+# Scoring OPRD-100 extractions
 
-The primary way to benchmark an automated extraction method (LLM, OCSR, rule-based) is
-the **lenient leaderboard** below. There are two ways to run the scoring:
+OPRD-100 has two scoring workflows with deliberately different uses:
+
+| Workflow | Pairing | Use |
+|---|---|---|
+| **Strict validation** | Exact `(Reference, Location.Type, Location.Num)` | Reproduce the paper's human re-extraction validation only |
+| **Lenient automated scoring** | Content-based Hungarian matching within each paper and location type | Score LLM, OCSR, and rule-based extraction systems |
+
+Do not use strict scoring to rank automated extraction systems. Automated systems can
+recover the correct reaction while assigning a different Scheme, Table, Experimental,
+or location number; strict matching would discard those reactions before their content
+is assessed. The automated leaderboard therefore reports the lenient score.
+
+There are two ways to run the supported scoring workflows:
 
 ### Option 1: Use the Jupyter Notebook (Manual)
-- Use the `example_lenient_scoring.ipynb` notebook in the notebooks folder (the lenient,
-  content-based method used for the leaderboard). `example_scoring.ipynb` demonstrates the
-  strict method used for human-re-extraction validation.
-- Change the filepath to your own dataset
-- Run all cells to generate scores and visualizations
+- Use [`notebooks/example_scoring.ipynb`](notebooks/example_scoring.ipynb), which contains
+  both workflows and explains when each one is appropriate.
+- The strict section is fixed to the bundled human validation set from the paper.
+- Set `automated_extraction_path` to your extracted reaction JSON to run the lenient section.
 
 ### Option 2: Submit to the Leaderboard (Automated)
 Submit your extracted data via pull request for automated scoring and public leaderboard inclusion:
@@ -33,7 +43,7 @@ See detailed instructions in [data/submissions/README.md](data/submissions/READM
 
 ## 🏆 Leaderboard — Automated Extraction (AI / OCSR)
 
-This is the primary OPRD-100 leaderboard. Automated extraction pipelines (LLM, OCSR, rule-based) are scored with the **lenient, content-based** method: each predicted reaction is paired to the ground truth by chemical and field similarity (Hungarian assignment) rather than by exact location labels, because automated tools rarely reproduce a paper's `(Scheme/Table/Experimental, number)` bookkeeping. The reaction-SMILES metric uses exact InChIKey-set overlap (the same metric as the strict validation scorer), and stereochemistry is kept.
+This is the primary OPRD-100 leaderboard. Automated extraction pipelines (LLM, OCSR, rule-based) are scored **only with the lenient, content-based method**: each predicted reaction is paired to the ground truth by chemical and field similarity (Hungarian assignment) rather than by exact location labels, because automated tools rarely reproduce a paper's `(Scheme/Table/Experimental, number)` bookkeeping. The reaction-SMILES metric uses exact InChIKey-set overlap (the same metric as the strict validation scorer), and stereochemistry is kept.
 
 Entries are ranked by **Score = Quality × Coverage**, rewarding both accurate chemistry and completeness. The `Human re-extraction (reference)` row is the **ceiling** — the quality a careful human achieves under this method, and the target AI systems should aim for.
 
@@ -68,8 +78,10 @@ Unless stated otherwise, scores are binary (1/0) or Jaccard-style similarities c
 1) Reaction entry count
   - Equality of the number of reactions per location (for diagnostics; not in total_similarity).
 
-2) SMILES similarity
-  - String-based comparison of reported SMILES (exact match or set overlap where applicable).
+2) Reaction-SMILES similarity
+  - By default, molecules on each side of the reaction are converted to InChIKeys and
+    compared by set overlap. The optional Tanimoto mode uses Morgan fingerprints for
+    graded molecular similarity.
 
 3) Reaction step number equality
   - Binary equality of step counts.

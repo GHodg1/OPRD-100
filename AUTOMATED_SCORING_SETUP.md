@@ -35,8 +35,8 @@ for AI/OCSR while leaving the strict validation methodology unchanged.
 **Human reference target.** Scoring the human validation set with the *lenient* method
 gives the **maximum per-match quality achievable by a human** under this methodology —
 seeded into the lenient leaderboard as a cross-referenceable target for AI systems. See
-`notebooks/example_lenient_scoring.ipynb` for the same plots the paper uses for the
-strict method.
+`notebooks/example_scoring.ipynb` for a single walkthrough of both the strict paper
+validation and lenient automated-extraction workflows.
 
 ## 🎯 What This Does
 
