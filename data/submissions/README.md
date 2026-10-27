@@ -91,9 +91,17 @@ Create a JSON file in this directory with the following structure:
 - `reactions`: Array of reaction data following the OPRD-100 schema
 
 ### Optional Fields
-- `repository_url`: Link to your code repository
+- `repository_url`: Optional HTTP(S) link to your extraction/scoring code repository,
+  displayed in the leaderboard's **Code repository** column. Omit this field, use
+  `null`, or leave it empty (`""`) if you do not wish to share your code. The table
+  will show **Not shared**, with no effect on your score or ranking.
 - `paper_url`: Link to associated paper or preprint
 - `contact_email`: Your contact email
+
+Code does not have to be public to participate. However, submission JSON files,
+PRs, and evaluation results in this repository are public: do not include private
+repository URLs, access tokens, or confidential contact details. Omitting the code
+link keeps the code unshared; it does not make the prediction JSON private.
 
 ### Reaction Data Format
 Follow the OPRD-100 schema structure. See the [validation_reactions.json](../OPRD-100.json) file for complete examples.

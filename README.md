@@ -47,9 +47,11 @@ This is the primary OPRD-100 leaderboard. Automated extraction pipelines (LLM, O
 
 Entries are ranked by **Score = Quality × Coverage**, rewarding both accurate chemistry and completeness. The `Human re-extraction (reference)` row is the **ceiling** — the quality a careful human achieves under this method, and the target AI systems should aim for.
 
-| Rank | Submitter | Score | Quality | Coverage | Experimental | Table | Scheme | Matched | Date | Details |
-|------|-----------|-------|---------|----------|--------------|-------|--------|---------|------|----------|
-| 1 | Human re-extraction (reference) | 0.857 | 0.884 | 96.9% | 0.817 | 0.892 | 0.858 | 190/196 | 2026-07-13 | [PR #0](../../pull/0) |
+Code sharing is optional. Include `repository_url` in your submission to publish a code link, or omit it / leave it blank to keep your code private. Any URL included in a public submission is public. Not sharing code does not affect scoring or ranking.
+
+| Rank | Submitter | Score | Quality | Coverage | Experimental | Table | Scheme | Matched | Date | Code repository | Details |
+|------|-----------|-------|---------|----------|--------------|-------|--------|---------|------|-----------------|----------|
+| 1 | Human re-extraction (reference) | 0.857 | 0.884 | 96.9% | 0.817 | 0.892 | 0.858 | 190/196 | 2026-07-13 | Not shared | [PR #0](../../pull/0) |
 
 **How to read the scores:**
 - **Score**: headline ranking metric, Quality × Coverage (max 1.0)
@@ -61,9 +63,9 @@ Entries are ranked by **Score = Quality × Coverage**, rewarding both accurate c
 
 This table is **not** a competitive leaderboard — it documents the strict validation that establishes OPRD-100 as a faithful ground-truth source. A human independently re-extracted reactions, scored with the **strict** method (reactions matched by exact `(Reference, Type, Num)` location key, stereochemistry required, binary InChIKey SMILES matching). High scores here show OPRD-100 is internally consistent and reproducible.
 
-| Rank | Submitter | Combined | Experimental | Table | Scheme | Reactions | Date | Details |
-|------|-----------|----------|--------------|-------|--------|-----------|------|----------|
-| 1 | Human re-extraction (validation) | 0.882 | 0.817 | 0.892 | 0.847 | 189 | 2026-07-10 | [PR #0](../../pull/0) |
+| Rank | Submitter | Combined | Experimental | Table | Scheme | Reactions | Date | Code repository | Details |
+|------|-----------|----------|--------------|-------|--------|-----------|------|-----------------|----------|
+| 1 | Human re-extraction (validation) | 0.882 | 0.817 | 0.892 | 0.847 | 189 | 2026-07-10 | Not shared | [PR #0](../../pull/0) |
 
 **Metrics explanation:**
 - **Combined**: Average similarity across all reaction types (higher is better, max 1.0)

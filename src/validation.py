@@ -5,6 +5,7 @@ import time
 from typing import Optional, Tuple
 import json
 import os
+import warnings
 from rdkit import Chem
 from rdkit.Chem import rdChemReactions
 from rdkit.Chem import rdFingerprintGenerator
@@ -17,6 +18,7 @@ from scipy.optimize import linear_sum_assignment
 
 # Morgan fingerprint generator (radius 2, 2048 bits), reused across calls. Used by the
 # optional graded-Tanimoto reaction-SMILES similarity method.
+# TODO: Enable and validate stereochemistry-aware Tanimoto fingerprints.
 _MORGAN_GENERATOR = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
 
 # Valid values for the reaction-SMILES similarity method.
@@ -601,15 +603,16 @@ class CompareReactionEntries():
         return reaction_smiles_similarity
 
     def _component_fingerprints(self, side_smiles: str) -> list:
-        """Morgan fingerprints for each dot-separated molecule on one side of a reaction."""
+        """Fingerprint every component, rejecting empty or invalid molecules."""
         fps = []
         for part in (side_smiles or "").split("."):
             part = part.strip()
             if not part:
-                continue
+                raise ValueError("Empty molecule component")
             mol = Chem.MolFromSmiles(part)
-            if mol is not None:
-                fps.append(_MORGAN_GENERATOR.GetFingerprint(mol))
+            if mol is None or mol.GetNumAtoms() == 0:
+                raise ValueError(f"Unparseable molecule component: {part!r}")
+            fps.append(_MORGAN_GENERATOR.GetFingerprint(mol))
         return fps
 
     def soft_set_similarity(self, fps_a: list, fps_b: list) -> float:
@@ -639,12 +642,20 @@ class CompareReactionEntries():
             return 0.0
         r1, p1 = smi1.split(">>", 1)
         r2, p2 = smi2.split(">>", 1)
-        reactant_similarity = self.soft_set_similarity(
-            self._component_fingerprints(r1), self._component_fingerprints(r2)
-        )
-        product_similarity = self.soft_set_similarity(
-            self._component_fingerprints(p1), self._component_fingerprints(p2)
-        )
+        try:
+            r1_fps = self._component_fingerprints(r1)
+            r2_fps = self._component_fingerprints(r2)
+            p1_fps = self._component_fingerprints(p1)
+            p2_fps = self._component_fingerprints(p2)
+        except ValueError as exc:
+            warnings.warn(
+                f"Invalid Tanimoto reaction SMILES; molecular score is zero: {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return 0.0
+        reactant_similarity = self.soft_set_similarity(r1_fps, r2_fps)
+        product_similarity = self.soft_set_similarity(p1_fps, p2_fps)
         return (reactant_similarity + product_similarity) / 2
 
     def compare_reaction_steps(self, rxn1: dict, rxn2: dict):
@@ -667,6 +678,7 @@ class CompareReactionEntries():
     def build_entity_amounts(self, steps: list, key_name="Reagents") -> dict[str, dict[str, list]]:
         """
         Get unique reagents/solvents and amounts lists from all steps.
+        Normalize names before grouping so case variants share amount totals.
         Splits '+'-concatenated amount strings into separate entries.
         """
         results: dict[str, dict[str, list]] = {}
@@ -683,6 +695,7 @@ class CompareReactionEntries():
                     amounts = {}
                 key = d.get(key_name[:-1])
                 if key:
+                    key = key.lower().strip()
                     bucket = results.setdefault(key, {})
                     # Ensure keys exist
                     for akey in amounts.keys():
@@ -1362,4 +1375,3 @@ class PubChemResolver:
                     'common_name': None,
                     'cid': None}})
         return None
-

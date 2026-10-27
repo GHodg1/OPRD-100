@@ -15,6 +15,8 @@ import argparse
 import json
 import re
 from datetime import datetime
+from pathlib import Path
+from urllib.parse import quote, urlsplit
 
 # Per-mode configuration: which JSON file, which README section, how to rank.
 MODE_CONFIG = {
@@ -31,6 +33,33 @@ MODE_CONFIG = {
 }
 
 
+def _normalize_repository_url(value):
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("repository_url must be an HTTP(S) URL or left blank")
+    url = value.strip()
+    if not url:
+        return None
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme not in ("http", "https")
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in url)
+    ):
+        raise ValueError("repository_url must be an HTTP(S) URL without credentials or whitespace")
+    return url
+
+
+def _repository_link(entry):
+    url = _normalize_repository_url(entry.get("repository_url"))
+    if url is None:
+        return "Not shared"
+    return f"[Code](<{quote(url, safe=':/?#[]@!$&*+,;=%~')}>)"
+
+
 def update_leaderboard(submitter, scores_file, pr_number, mode="strict"):
     """Update the README leaderboard and the leaderboard JSON for the given mode."""
     cfg = MODE_CONFIG[mode]
@@ -38,6 +67,14 @@ def update_leaderboard(submitter, scores_file, pr_number, mode="strict"):
 
     with open(scores_file, "r") as f:
         scores = json.load(f)
+
+    metadata_path = Path(scores_file).with_name("metadata.json")
+    try:
+        with metadata_path.open() as f:
+            metadata = json.load(f)
+    except FileNotFoundError:
+        metadata = {}
+    repository_url = _normalize_repository_url(metadata.get("repository_url"))
 
     leaderboard_path = cfg["leaderboard_path"]
     try:
@@ -57,6 +94,7 @@ def update_leaderboard(submitter, scores_file, pr_number, mode="strict"):
         "submitter": submitter,
         "date": datetime.now().strftime("%Y-%m-%d"),
         "pr_number": pr_number,
+        "repository_url": repository_url,
         "scores": scores,
     }
 
@@ -94,8 +132,8 @@ def _render_strict_table(leaderboard):
         "binary InChIKey SMILES matching). High scores here show OPRD-100 is internally "
         "consistent and reproducible.\n\n"
     )
-    table += "| Rank | Submitter | Combined | Experimental | Table | Scheme | Reactions | Date | Details |\n"
-    table += "|------|-----------|----------|--------------|-------|--------|-----------|------|----------|\n"
+    table += "| Rank | Submitter | Combined | Experimental | Table | Scheme | Reactions | Date | Code repository | Details |\n"
+    table += "|------|-----------|----------|--------------|-------|--------|-----------|------|-----------------|----------|\n"
     for entry in leaderboard["entries"]:
         s = entry["scores"]
         exp = f"{s['exp_mean']:.3f}" if s.get("num_experimental", 0) > 0 else "N/A"
@@ -104,7 +142,8 @@ def _render_strict_table(leaderboard):
         table += (
             f"| {entry['rank']} | {entry['submitter']} | {s['combined_mean']:.3f} | "
             f"{exp} | {table_score} | {scheme} | {s.get('total_reactions', 0)} | "
-            f"{entry['date']} | [PR #{entry['pr_number']}](../../pull/{entry['pr_number']}) |\n"
+            f"{entry['date']} | {_repository_link(entry)} | "
+            f"[PR #{entry['pr_number']}](../../pull/{entry['pr_number']}) |\n"
         )
     table += "\n**Metrics explanation:**\n"
     table += "- **Combined**: Average similarity across all reaction types (higher is better, max 1.0)\n"
@@ -127,9 +166,13 @@ def _render_lenient_table(leaderboard):
         "chemistry and completeness. The `Human re-extraction (reference)` row is the "
         "**ceiling** — the quality a careful human achieves under this method, and the target "
         "AI systems should aim for.\n\n"
+        "Code sharing is optional. Include `repository_url` in your submission to "
+        "publish a code link, or omit it / leave it blank to keep your code private. "
+        "Any URL included in a public submission is public. Not sharing code does "
+        "not affect scoring or ranking.\n\n"
     )
-    table += "| Rank | Submitter | Score | Quality | Coverage | Experimental | Table | Scheme | Matched | Date | Details |\n"
-    table += "|------|-----------|-------|---------|----------|--------------|-------|--------|---------|------|----------|\n"
+    table += "| Rank | Submitter | Score | Quality | Coverage | Experimental | Table | Scheme | Matched | Date | Code repository | Details |\n"
+    table += "|------|-----------|-------|---------|----------|--------------|-------|--------|---------|------|-----------------|----------|\n"
     for entry in leaderboard["entries"]:
         s = entry["scores"]
         cov = s.get("coverage", 0.0)
@@ -141,7 +184,8 @@ def _render_lenient_table(leaderboard):
             f"| {entry['rank']} | {entry['submitter']} | "
             f"{s.get('combined_mean_covered', 0.0):.3f} | {s.get('combined_mean', 0.0):.3f} | "
             f"{cov * 100:.1f}% | {exp} | {table_score} | {scheme} | {matched} | "
-            f"{entry['date']} | [PR #{entry['pr_number']}](../../pull/{entry['pr_number']}) |\n"
+            f"{entry['date']} | {_repository_link(entry)} | "
+            f"[PR #{entry['pr_number']}](../../pull/{entry['pr_number']}) |\n"
         )
     table += "\n**How to read the scores:**\n"
     table += "- **Score**: headline ranking metric, Quality × Coverage (max 1.0)\n"
