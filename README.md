@@ -37,7 +37,9 @@ Submit your extracted data via pull request for automated scoring and public lea
 2. **Format your data** following the [submission template](data/submissions/README.md)
 3. **Create a pull request** with your submission file in `data/submissions/`
 4. **Automated scoring** runs with the **lenient (content-based)** method and adds your
-   results to the leaderboard below
+   provisional results to the PR. Accepted submissions are re-scored and added to
+   the leaderboard below after merge. Generated reports are workflow artifacts,
+   not commits to your branch.
 
 See detailed instructions in [data/submissions/README.md](data/submissions/README.md).
 

@@ -111,6 +111,8 @@ Follow the OPRD-100 schema structure. See the [validation_reactions.json](../OPR
 1. **Fork this repository**
 2. **Extract reactions** from OPRD-100 papers using your method
 3. **Create your submission file** as `data/submissions/your_name.json`
+   - Change exactly one participant JSON file and no other files in this PR.
+   - Use letters, digits, underscores, and dashes in the filename.
 4. **Create a pull request**
    - `git checkout -b your_submission_team_name`
    - `git add data/submissions/your_name.json`
@@ -120,9 +122,14 @@ Follow the OPRD-100 schema structure. See the [validation_reactions.json](../OPR
     - Description: Brief overview of your method
 5. **Automated evaluation** will:
    - Run scoring against the ground-truth dataset
-   - Generate plots in `results/your_name_timestamp/`
-   - Update the leaderboard in README.md
-   - Comment results on your PR
+   - Attach a score summary and per-match diagnostics to the GitHub Actions run
+   - Post or update a provisional score comment on your PR
+   - Re-score and update the public leaderboard **after the PR is merged**
+
+Fork submissions are supported without running your code or writing to your
+branch. A PR closed without merging does not change the public leaderboard.
+Submission JSON, evaluation logs, comments, and artifacts are public. Artifacts
+expire after 30 days; download diagnostics if you need to keep them longer.
 
 ## ✅ Validation Tips
 

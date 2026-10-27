@@ -98,9 +98,15 @@ These scripts are automatically run by the GitHub Actions workflow (`.github/wor
 - A pull request is opened or updated
 - The PR modifies files in `data/submissions/`
 
-The workflow will:
-1. Extract the submitter name from the JSON file
-2. Run scoring and generate plots
-3. Extract metrics and update the leaderboard
-4. Commit results back to the PR branch
-5. Comment scores on the PR
+The workflow selects the single participant JSON changed by the PR, including
+fork PRs, and evaluates it using trusted base-branch code with read-only
+permissions. A separate job posts provisional scores and uploads diagnostics as
+workflow artifacts. After merge, the accepted submission is re-scored and only
+the public leaderboard files are committed to `main`; the participant's branch
+and generated result directories are never committed by the bot.
+
+`submission_workflow.py` prepares and validates data-only publication summaries
+and invokes the existing leaderboard updater. `.github/scripts/submissions.cjs`
+handles GitHub API operations without interpolating submission data into shell
+commands. See [the setup guide](../AUTOMATED_SCORING_SETUP.md) for deployment
+permissions and a disposable hosted smoke-test procedure.

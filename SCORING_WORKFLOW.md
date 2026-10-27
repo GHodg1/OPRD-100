@@ -3,6 +3,11 @@
 A detailed, step-by-step description of how a submission is scored against the
 OPRD-100 ground truth.
 
+For GitHub submission automation, fork permissions, post-merge publication, and
+the hosted smoke-test procedure, see [Automated scoring setup](AUTOMATED_SCORING_SETUP.md).
+CI reports provisional results on the PR; the public leaderboard changes only
+after merge. Generated diagnostics are workflow artifacts rather than Git commits.
+
 There are **two scoring methodologies**:
 
 | Mode | Matching strategy | Use for |
