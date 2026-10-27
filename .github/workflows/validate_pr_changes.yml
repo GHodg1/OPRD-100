@@ -4,124 +4,28 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   validate-changes:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-      contents: read
-    
+    timeout-minutes: 5
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      
-      - name: Get changed files
-        id: changed-files
-        run: |
-          # Get list of all changed files in the PR
-          git fetch origin ${{ github.base_ref }}
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
-          
-          echo "Changed files:"
-          echo "$CHANGED_FILES"
-          
-          # Save to output
-          echo "files<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-      
-      - name: Validate file paths
-        id: validate
-        run: |
-          CHANGED_FILES="${{ steps.changed-files.outputs.files }}"
-          INVALID_FILES=""
-          ALLOWED_PATTERN="^data/submissions/"
-          
-          # Check each changed file
-          while IFS= read -r file; do
-            # Skip empty lines
-            if [ -z "$file" ]; then
-              continue
-            fi
-            
-            # Check if file matches allowed pattern
-            if [[ ! "$file" =~ $ALLOWED_PATTERN ]]; then
-              INVALID_FILES="${INVALID_FILES}${file}\n"
-            fi
-          done <<< "$CHANGED_FILES"
-          
-          # Determine if validation passed
-          if [ -z "$INVALID_FILES" ]; then
-            echo "✅ All file changes are in allowed directory (data/submissions/)"
-            echo "validation_passed=true" >> $GITHUB_OUTPUT
-          else
-            echo "❌ VALIDATION FAILED: Files modified outside allowed directory"
-            echo ""
-            echo "The following files are not allowed to be modified:"
-            echo -e "$INVALID_FILES"
-            echo ""
-            echo "Only files in data/submissions/ can be added or modified in pull requests."
-            echo "validation_passed=false" >> $GITHUB_OUTPUT
-            echo "invalid_files<<EOF" >> $GITHUB_OUTPUT
-            echo -e "$INVALID_FILES" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-      
-      - name: Comment on PR (if validation fails)
-        if: failure()
-        uses: actions/github-script@v6
+          persist-credentials: false
+
+      - name: Validate submission PRs without blocking maintenance
+        uses: actions/github-script@v7
         with:
           script: |
-            const invalidFiles = `${{ steps.validate.outputs.invalid_files }}`.trim().split('\n').filter(f => f);
-            
-            const comment = `## ❌ Pull Request Validation Failed
-            
-            **This pull request modifies files outside the allowed directory.**
-            
-            ### 🚫 Files Modified Outside \`data/submissions/\`:
-            ${invalidFiles.map(f => `- \`${f}\``).join('\n')}
-            
-            ### ✅ What You Can Do:
-            Only files in the \`data/submissions/\` directory can be added or modified in pull requests.
-            
-            To fix this:
-            1. Remove all changes to files outside \`data/submissions/\`
-            2. Only add/modify your submission file in \`data/submissions/your_submission.json\`
-            3. Push the corrected changes
-            
-            ### 📖 Submission Guidelines:
-            - Place your submission JSON file in \`data/submissions/\`
-            - Do not modify any other files (code, workflows, documentation, etc.)
-            - See \`data/submissions/README.md\` for submission format
-            
-            **This PR will not be processed until all file changes are within the allowed directory.**
-            `;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
+            const {selectSubmission} = require('./.github/scripts/submissions.cjs');
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo, pull_number: context.issue.number, per_page: 100,
             });
-      
-      - name: Comment on PR (if validation succeeds)
-        if: success()
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const comment = `## ✅ File Validation Passed
-            
-            All file changes are within the allowed directory (\`data/submissions/\`).
-            
-            Your submission will now be processed by the automated scoring system.
-            `;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+            const submission = selectSubmission(files);
+            core.info(submission
+              ? `Submission selected: ${submission.filename}`
+              : 'Maintenance PR: no participant submission to score.');

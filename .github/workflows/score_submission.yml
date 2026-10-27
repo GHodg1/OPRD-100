@@ -1,217 +1,129 @@
 name: Score Submission
 
 on:
-  pull_request:
-    paths:
-      - 'data/submissions/**'
-    types: [opened, synchronize]
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+
+permissions: {}
+
+concurrency:
+  group: scoring-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   evaluate:
+    if: github.event.action != 'closed' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-    # Require file validation to pass before running scoring
-    needs: []
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    permissions:
-      contents: write
-      pull-requests: write
-    
-    # Security: Set timeout to prevent runaway processes
     timeout-minutes: 30
-    
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      is_submission: ${{ steps.prepare.outputs.is_submission }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      # Never check out a submitter's branch in this workflow.
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Verify only submissions folder modified
-        run: |
-          # Double-check that only data/submissions/ files were modified
-          git fetch origin ${{ github.base_ref }}
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
-          
-          echo "Checking changed files..."
-          INVALID=0
-          while IFS= read -r file; do
-            if [ -n "$file" ] && [[ ! "$file" =~ ^data/submissions/ ]]; then
-              echo "❌ Unauthorized file modification detected: $file"
-              INVALID=1
-            fi
-          done <<< "$CHANGED_FILES"
-          
-          if [ $INVALID -eq 1 ]; then
-            echo ""
-            echo "ERROR: This PR modifies files outside data/submissions/"
-            echo "Scoring will not proceed for security reasons."
-            exit 1
-          fi
-          
-          echo "✅ Verification passed: Only submission files modified"
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      
-      - name: Install dependencies
-        run: |
-          pip install -r requirements-ci.txt
-      
-      - name: Security - Validate submission file path
-        id: validate_path
-        run: |
-          # Only allow JSON files in data/submissions/
-          SUBMISSION_FILE=$(find data/submissions -name "*.json" -type f ! -name "example_submission.json" ! -name "time_test_submission.json" | head -1)
-          
-          if [ -z "$SUBMISSION_FILE" ]; then
-            echo "❌ No valid submission file found"
-            exit 1
-          fi
-          
-          # Verify path is within data/submissions/
-          if [[ ! "$SUBMISSION_FILE" =~ ^data/submissions/[^/]+\.json$ ]]; then
-            echo "❌ Invalid submission path: $SUBMISSION_FILE"
-            echo "Submissions must be directly in data/submissions/ directory"
-            exit 1
-          fi
-          
-          # Check file size (max 10MB)
-          FILE_SIZE=$(stat -c%s "$SUBMISSION_FILE" 2>/dev/null || stat -f%z "$SUBMISSION_FILE")
-          MAX_SIZE=$((10 * 1024 * 1024))
-          if [ "$FILE_SIZE" -gt "$MAX_SIZE" ]; then
-            echo "❌ File too large: $FILE_SIZE bytes (max 10MB)"
-            exit 1
-          fi
-          
-          echo "✅ Path validation passed: $SUBMISSION_FILE"
-          echo "submission_file=$SUBMISSION_FILE" >> $GITHUB_OUTPUT
-      
-      - name: Extract submitter name
-        id: get_name
-        run: |
-          SUBMISSION_FILE="${{ steps.validate_path.outputs.submission_file }}"
-          
-          # Validate JSON syntax before parsing
-          if ! python -c "import json; json.load(open('$SUBMISSION_FILE'))" 2>/dev/null; then
-            echo "❌ Invalid JSON file"
-            exit 1
-          fi
-          
-          SUBMITTER_NAME=$(python -c "import json; print(json.load(open('$SUBMISSION_FILE'))['submitter_name'])")
-          
-          # Sanitize submitter name (alphanumeric, spaces, hyphens, underscores only)
-          SUBMITTER_NAME=$(echo "$SUBMITTER_NAME" | tr -cd '[:alnum:] _-' | cut -c1-50)
-          
-          if [ -z "$SUBMITTER_NAME" ]; then
-            echo "❌ Invalid submitter_name"
-            exit 1
-          fi
-          
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          OUTPUT_DIR="results/${SUBMITTER_NAME}_${TIMESTAMP}"
-          echo "output_dir=$OUTPUT_DIR" >> $GITHUB_OUTPUT
-          echo "submitter_name=$SUBMITTER_NAME" >> $GITHUB_OUTPUT
-          echo "submission_file=$SUBMISSION_FILE" >> $GITHUB_OUTPUT
-      
-      - name: Create output directory
-        run: |
-          mkdir -p ${{ steps.get_name.outputs.output_dir }}
-      
-      - name: Run scoring
-        id: run_scoring
-        run: |
-          # Set resource limits
-          ulimit -v 4000000  # 4GB virtual memory limit
-          ulimit -t 1800     # 30 minutes CPU time limit
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
-          # Submissions are scored with the lenient (content-based) method — the
-          # primary leaderboard track for automated extraction. Strict scoring is
-          # reserved for the human re-extraction validation and is not run here.
-          timeout 25m python scripts/run_scoring.py --lenient \
-            --submission-file ${{ steps.get_name.outputs.submission_file }} \
-            --output-dir ${{ steps.get_name.outputs.output_dir }}
-        continue-on-error: true
-      
-      - name: Check scoring success
-        run: |
-          if [ ${{ steps.run_scoring.outcome }} != 'success' ]; then
-            echo "❌ Scoring failed or was terminated"
-            echo "This may be due to:"
-            echo "  - Security validation failure"
-            echo "  - Invalid submission format"
-            echo "  - Resource limits exceeded"
-            echo "  - Processing timeout"
-            exit 1
-          fi
-      
-      - name: Extract scores
-        id: extract_scores
-        run: |
-          python scripts/extract_scores.py --mode lenient \
-            --results-dir ${{ steps.get_name.outputs.output_dir }} \
-            --output ${{ steps.get_name.outputs.output_dir }}/scores.json
-          
-          # Read scores for later use
-          SCORES=$(cat ${{ steps.get_name.outputs.output_dir }}/scores.json)
-          echo "scores<<EOF" >> $GITHUB_OUTPUT
-          echo "$SCORES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-      
-      - name: Update leaderboard
-        run: |
-          python scripts/update_leaderboard.py --mode lenient \
-            --submitter "${{ steps.get_name.outputs.submitter_name }}" \
-            --scores-file ${{ steps.get_name.outputs.output_dir }}/scores.json \
-            --pr-number ${{ github.event.pull_request.number }}
-
-      - name: Commit results
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ${{ steps.get_name.outputs.output_dir }}
-          git add README.md
-          git add leaderboard_lenient.json
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Add scoring results for ${{ steps.get_name.outputs.submitter_name }}"
-            git push
-          fi
-      
-      - name: Comment on PR
-        uses: actions/github-script@v6
+      - name: Select and download the changed submission
+        id: prepare
+        uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            const scoresPath = '${{ steps.get_name.outputs.output_dir }}/scores.json';
-            const s = JSON.parse(fs.readFileSync(scoresPath, 'utf8'));
+            const workflow = require('./.github/scripts/submissions.cjs');
+            await workflow.prepare({github, context, core});
 
-            const comment = `## 🎯 Scoring Results
+      - uses: actions/setup-python@v5
+        if: steps.prepare.outputs.is_submission == 'true'
+        with:
+          python-version: '3.12'
 
-            Thank you for your submission, **${{ steps.get_name.outputs.submitter_name }}**!
+      - name: Install scoring dependencies
+        if: steps.prepare.outputs.is_submission == 'true'
+        run: python -m pip install -r requirements-ci.txt
 
-            Scored with the **lenient (content-based)** method — the primary leaderboard track for automated extraction.
+      - name: Score and prepare publication
+        if: steps.prepare.outputs.is_submission == 'true'
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          ulimit -v 4000000
+          ulimit -t 1500
+          timeout 25m python scripts/run_scoring.py --lenient \
+            --submission-file "$RUNNER_TEMP/oprd-scoring/submission.json" \
+            --output-dir "$RUNNER_TEMP/oprd-scoring/results"
+          python scripts/extract_scores.py --mode lenient \
+            --results-dir "$RUNNER_TEMP/oprd-scoring/results" \
+            --output "$RUNNER_TEMP/oprd-scoring/results/scores.json"
+          python scripts/submission_workflow.py summarize \
+            --directory "$RUNNER_TEMP/oprd-scoring"
 
-            ### Results Summary
-            | Score (Quality×Coverage) | Quality | Coverage | Experimental | Table | Scheme | Matched |
-            |--------------------------|---------|----------|--------------|-------|--------|---------|
-            | ${s.combined_mean_covered.toFixed(3)} | ${s.combined_mean.toFixed(3)} | ${(s.coverage * 100).toFixed(1)}% | ${s.exp_mean.toFixed(3)} | ${s.table_mean.toFixed(3)} | ${s.scheme_mean.toFixed(3)} | ${s.num_matched}/${s.num_gold} |
+      - name: Upload score summary and diagnostics
+        if: steps.prepare.outputs.is_submission == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: submission-score
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/oprd-scoring/publication.json
+            ${{ runner.temp }}/oprd-scoring/results/lenient_scores.json
+            ${{ runner.temp }}/oprd-scoring/results/lenient_matches.csv
 
-            - **Score** = Quality × Coverage (headline ranking metric)
-            - **Quality** = mean per-reaction similarity over matched reactions
-            - **Coverage** = fraction of ground-truth reactions matched in the papers you attempted
+  publish:
+    needs: evaluate
+    if: needs.evaluate.outputs.is_submission == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
 
-            📊 Results saved to: \`${{ steps.get_name.outputs.output_dir }}\`
+      - uses: actions/download-artifact@v4
+        with:
+          name: submission-score
+          path: ${{ runner.temp }}/oprd-scoring
 
-            Check out the full leaderboard in the [README](../blob/main/README.md#-leaderboard--automated-extraction-ai--ocsr)!
-            `;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+      - name: Verify the current PR and publication data
+        run: |
+          python scripts/submission_workflow.py validate \
+            --directory "$RUNNER_TEMP/oprd-scoring"
+
+      - name: Check whether this result is still current
+        id: gate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const workflow = require('./.github/scripts/submissions.cjs');
+            await workflow.gate({github, context, core});
+
+      - name: Update the leaderboard only after merge
+        if: steps.gate.outputs.publish_leaderboard == 'true'
+        run: |
+          python scripts/submission_workflow.py publish \
+            --directory "$RUNNER_TEMP/oprd-scoring"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -- README.md leaderboard_lenient.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update automated extraction leaderboard"
+            git push origin HEAD:main
+          fi
+
+      - name: Post or update the score comment
+        if: steps.gate.outputs.current == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const workflow = require('./.github/scripts/submissions.cjs');
+            await workflow.comment({github, context, core});
