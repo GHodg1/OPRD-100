@@ -225,7 +225,7 @@ class LenientScore:
     pred_type_counts: dict[str, int] = field(default_factory=dict)
 
     def per_type_breakdown(self) -> dict[str, dict[str, float]]:
-        """Per-primary-type metric breakdown (Scheme / Table / Experimental / …)."""
+        """Break down matches by gold type; unmatched predictions keep their own type."""
         breakdown: dict[str, dict[str, float]] = {}
         df = self.per_match_df
         all_types = set(self.gold_type_counts) | set(self.pred_type_counts)
@@ -391,7 +391,7 @@ def score_lenient(
                 continue
             row = {
                 "reference": key[0],
-                "primary_type": key[1] if type_aware_matching else "*",
+                "primary_type": _ptype(gold_data[gj]),
                 "pred_index": pi,
                 "gold_index": gj,
             }
@@ -410,7 +410,11 @@ def score_lenient(
     coverage = n_matched / n_gold if n_gold > 0 else 0.0
 
     gold_type_counts = dict(Counter(_ptype(e) for e in gold_in_scope))
-    pred_type_counts = dict(Counter(_ptype(e) for e in pred_data))
+    matched_pred_types = {row["pred_index"]: row["primary_type"] for row in all_rows}
+    pred_type_counts = dict(Counter(
+        matched_pred_types[idx] if idx in matched_pred_types else _ptype(e)
+        for idx, e in enumerate(pred_data)
+    ))
 
     def mean(col: str) -> float:
         return _safe_mean(df[col]) if col in df.columns else 0.0

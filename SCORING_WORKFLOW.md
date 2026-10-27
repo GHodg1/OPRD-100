@@ -191,7 +191,7 @@ For each `(Reference, type)` group present on both sides:
 3. Optionally drop pairs below `smiles_match_threshold` (default 0 = keep all).
 
 Every accepted pairing becomes a row in the per-match DataFrame, tagged with its
-`reference` and `primary_type`.
+`reference` and the **gold reaction's** `primary_type`, including in global mode.
 
 ### 5.4 Aggregate + coverage
 
@@ -202,12 +202,24 @@ Every accepted pairing becomes a row in the per-match DataFrame, tagged with its
 3. **Coverage-weighted score** — `combined_mean_covered = combined_mean × coverage`.
 4. **Per-type breakdown** — the same metrics recomputed per primary type
    (Scheme / Table / Experimental / Figure), each with its own matched/gold counts.
+   Matched predictions are attributed to their paired gold type, even if the
+   submitted type differs in global mode. Unmatched predictions retain their
+   submitted type. Thus per-type prediction and match counts sum to their
+   respective overall totals without a synthetic `*` category.
 
 ### 5.5 Outputs
 
 - `lenient_scores.json` — all aggregate metrics, coverage, and the per-type breakdown
 - `lenient_matches.csv` — one row per matched pair with every sub-metric
 - `metadata.json` — submitter info, scoring mode, coverage
+
+When updating either leaderboard, `update_leaderboard.py` reads the optional
+`repository_url` from `metadata.json` beside the scores file. Only that URL is
+copied into the leaderboard entry; contact details are not copied. The generated
+tables display a **Code repository** link or **Not shared** when the URL is omitted,
+null, or blank (including older runs without metadata). Code sharing does not
+affect scoring or ranking. Included URLs are public; participants wanting to
+keep their code private should omit the link.
 
 ---
 
@@ -226,7 +238,9 @@ Both modes score a matched pair identically. Seven sub-metrics, each in `[0, 1]`
 | `temperature_similarity` | Reduced to `[min, max]` (with `rt`→25, `reflux`→3000, etc.); `1.0` if equal, else `0.0` |
 
 **Reagents / Solvents** (`compare_reagents_solvents`): names are standardised and
-lower-cased; `name_score` is the set Jaccard of the name sets; `amount_score` is
+lower-cased and stripped of surrounding whitespace **before grouping amounts**;
+case variants share one amount bucket, including across steps.
+`name_score` is the set Jaccard of the name sets; `amount_score` is
 the mean `dict_similarity_score` over the **shared** names' amount dicts.
 
 **`dict_similarity_score`**: `1.0` for exact match; otherwise
@@ -243,7 +257,16 @@ both dicts are entirely null.
 - **`tanimoto`**: each molecule becomes a Morgan fingerprint (radius 2, 2048 bits);
   each side is scored by a symmetric best-match Tanimoto (`soft_set_similarity`),
   then reactant and product scores are averaged. Near-identical molecules (ethyl
-  vs butyl ester, differing stereo, salt forms) receive **partial** credit.
+  vs butyl ester, salt forms) receive **partial** credit. An empty or unparseable
+  component on either side emits a runtime warning and gives the entire
+  reaction-SMILES metric **0**, rather than silently dropping the component.
+  Other field metrics are still evaluated. Only `reactants>>products` is
+  supported; three-part reaction SMILES remain unsupported.
+
+**TODO — stereochemistry:** Morgan fingerprints currently omit chirality, so
+opposite enantiomers can receive a Tanimoto molecular score of 1.0. Add and
+validate stereochemistry-aware fingerprints before claiming stereo sensitivity
+for this optional method. The InChIKey method is unchanged.
 
 ---
 
