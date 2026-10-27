@@ -1,0 +1,72 @@
+{
+  "submitter_name": "Disposable workflow smoke test",
+  "method_description": "Ground-truth identity check for GitHub Actions only. CLOSE WITHOUT MERGING; do not publish to the leaderboard.",
+  "repository_url": "https://github.com/GHodg1/OPRD-100",
+  "reactions": [
+    {
+      "Reaction": "Cc1cnccn1>>ClCc1cnccn1",
+      "Reference": "op3002728",
+      "Location": {
+        "Type": "Scheme",
+        "Num": "2"
+      },
+      "Full text of reaction": null,
+      "Amounts": null,
+      "Steps": [
+        {
+          "Step": 1,
+          "Yield": {
+            "Isolated": null,
+            "Flow": null,
+            "Conversion wrt SM": null,
+            "Assay Yield": null,
+            "Selectivity": null,
+            "er": null,
+            "er R:S": null,
+            "er S:R": null,
+            "ee": null,
+            "ee (R)": null,
+            "ee (S)": null,
+            "Purity": null,
+            "dr": null,
+            "E:Z": null,
+            "Z:E": null,
+            "Purity type": null,
+            "Mass": null,
+            "other": null,
+            "Quantitative": null,
+            "No reaction": null
+          },
+          "Reagents": [
+            {
+              "Reagent": "NCS",
+              "Amounts": {
+                "Moisture": null,
+                "Concentration": null,
+                "Moles": null,
+                "Mass": null,
+                "Volume": null,
+                "Equivalents": null,
+                "Pressure": null,
+                "Flow Rate": null,
+                "Catalytic Amount": null
+              }
+            }
+          ],
+          "Solvents": [
+            {
+              "Solvent": null,
+              "Amounts": {
+                "Mass": null,
+                "Volume": null,
+                "ratio": null
+              }
+            }
+          ],
+          "Time": null,
+          "Temperature": null
+        }
+      ]
+    }
+  ]
+}
